@@ -2,7 +2,7 @@
 
 **FoodBridge** is a comprehensive food redistribution platform that connects food donors (restaurants, households, events) with food receivers (NGOs, shelters, individuals, cattle owners) to reduce food waste and help those in need.
 
-This repository contains the full MERN stack source code. The original design is available at: [Figma Design](https://www.figma.com/design/TnAcJVtVZai7AI7Wq5BJ7m/Food-Redistribution-System).
+This repository contains the full MERN stack source code.
 
 ---
 
