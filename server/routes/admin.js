@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const FoodListing = require('../models/FoodListing');
 const Request = require('../models/Request');
+const Rating = require('../models/Rating');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 // All routes require admin
@@ -99,6 +100,58 @@ router.delete('/listings/:id', async (req, res) => {
   try {
     await FoodListing.findByIdAndDelete(req.params.id);
     res.json({ message: 'Listing deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Analytics: Food Categories ───────────────────────────────────────────────
+// Returns donation counts grouped by foodType
+router.get('/analytics/food-categories', async (req, res) => {
+  try {
+    const donated = await FoodListing.aggregate([
+      { $group: { _id: '$foodType', count: { $sum: 1 }, completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } }, expired: { $sum: { $cond: [{ $eq: ['$status', 'expired'] }, 1, 0] } } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Monthly trend — last 6 months
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const monthly = await FoodListing.aggregate([
+      { $match: { createdAt: { $gte: sixMonthsAgo } } },
+      { $group: {
+          _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+          total: { $sum: 1 },
+          completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } },
+          expired: { $sum: { $cond: [{ $eq: ['$status', 'expired'] }, 1, 0] } }
+      }},
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    // Food waste rate
+    const totalListings = await FoodListing.countDocuments();
+    const expiredListings = await FoodListing.countDocuments({ status: 'expired' });
+    const wasteRate = totalListings ? Math.round((expiredListings / totalListings) * 100) : 0;
+
+    res.json({ categories: donated, monthly, wasteRate, totalListings, expiredListings });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Analytics: Top donors by ratings
+router.get('/analytics/ratings', async (req, res) => {
+  try {
+    const summary = await Rating.aggregate([
+      { $group: { _id: '$ratedUserId', averageRating: { $avg: '$rating' }, totalRatings: { $sum: 1 } } },
+      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $project: { _id: 1, name: '$user.name', averageRating: { $round: ['$averageRating', 1] }, totalRatings: 1 } },
+      { $sort: { averageRating: -1 } },
+      { $limit: 10 }
+    ]);
+    res.json({ summary });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -8,10 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { BottomNav } from '../../components/BottomNav';
 import { getAuthHeaders } from '../../context/AuthContext';
 import { toast } from 'sonner';
+import { RatingModal } from '../../components/RatingModal';
+
 
 export function MyRequests() {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<any[]>([]);
+  const [ratingTarget, setRatingTarget] = useState<{ requestId: string; donorName: string; foodName: string } | null>(null);
+  const [ratedIds, setRatedIds] = useState<Set<string>>(new Set());
 
   const fetchRequests = async () => {
     try {
@@ -157,15 +161,32 @@ export function MyRequests() {
           </div>
         )}
 
-        {/* Completed — success message */}
+        {/* Completed — success + rate button */}
         {request.status === 'completed' && (
-          <div className="bg-blue-50 border-t border-blue-100 px-4 py-3">
+          <div className="bg-blue-50 border-t border-blue-100 px-4 py-3 space-y-2">
             <p className="text-sm text-blue-700 font-medium">
               <CheckCircle className="w-4 h-4 inline mr-1" />
               Food successfully received! Thank you for helping reduce food waste. 🌍
             </p>
+            {!ratedIds.has(request._id) && (
+              <button
+                onClick={() => setRatingTarget({
+                  requestId: request._id,
+                  donorName: donor.name || 'Donor',
+                  foodName: listing.foodType || 'Food'
+                })}
+                className="flex items-center gap-1.5 px-4 py-2 bg-[#F4A261] hover:bg-[#e89350] text-white rounded-xl text-sm font-medium transition-colors w-full justify-center"
+              >
+                <Star className="w-4 h-4 fill-white" />
+                Rate this Pickup
+              </button>
+            )}
+            {ratedIds.has(request._id) && (
+              <p className="text-xs text-green-600 font-medium">⭐ You rated this pickup!</p>
+            )}
           </div>
         )}
+
 
         {/* Rejected — message */}
         {request.status === 'rejected' && (
@@ -225,6 +246,17 @@ export function MyRequests() {
       </div>
 
       <BottomNav role="receiver" active="requests" />
+
+      {/* Rating Modal */}
+      {ratingTarget && (
+        <RatingModal
+          requestId={ratingTarget.requestId}
+          donorName={ratingTarget.donorName}
+          foodName={ratingTarget.foodName}
+          onClose={() => setRatingTarget(null)}
+          onSubmitted={() => setRatedIds((prev) => new Set([...prev, ratingTarget.requestId]))}
+        />
+      )}
     </div>
   );
 }

@@ -14,6 +14,8 @@ const reportRoutes = require('./routes/reports');
 const notificationRoutes = require('./routes/notifications');
 const chatRoutes = require('./routes/chat');
 const geoRoutes = require('./routes/geo');
+const ratingsRoutes = require('./routes/ratings');
+
 
 const app = express();
 const server = http.createServer(app);
@@ -40,6 +42,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/geo', geoRoutes);
+app.use('/api/ratings', ratingsRoutes);
+
 
 // Health check
 app.get('/api/health', (req, res) => {

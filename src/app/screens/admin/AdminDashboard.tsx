@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Users, Package, ClipboardList, BarChart3, Trash2, RefreshCw, AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
+import { ArrowLeft, Users, Package, ClipboardList, BarChart3, Trash2, RefreshCw, AlertTriangle, ShieldCheck, Loader2, TrendingUp, Star } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { getAuthHeaders } from '../../context/AuthContext';
 import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid } from 'recharts';
+
 
 interface Stats {
   totalUsers: number;
@@ -49,6 +51,11 @@ export function AdminDashboard() {
   const [tabsRef] = useState<{ select?: (v: string) => void }>({});
   const [currentTab, setCurrentTab] = useState('analytics');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [foodCategories, setFoodCategories] = useState<any[]>([]);
+  const [monthlyTrend, setMonthlyTrend] = useState<any[]>([]);
+  const [wasteRate, setWasteRate] = useState(0);
+  const [topDonors, setTopDonors] = useState<any[]>([]);
+
 
   const fetchStats = async () => {
     try {
@@ -80,9 +87,29 @@ export function AdminDashboard() {
       if (res.ok) { const d = await res.json(); setReports(d.reports); }
     } catch {}
   };
+  const fetchCharts = async () => {
+    try {
+      const [catRes, ratRes] = await Promise.all([
+        fetch('/api/admin/analytics/food-categories', { headers: getAuthHeaders() }),
+        fetch('/api/admin/analytics/ratings', { headers: getAuthHeaders() })
+      ]);
+      if (catRes.ok) {
+        const d = await catRes.json();
+        setFoodCategories(d.categories.map((c: any) => ({ name: c._id, total: c.count, completed: c.completed, expired: c.expired })));
+        setMonthlyTrend(d.monthly.map((m: any) => ({ name: `${m._id.month}/${m._id.year}`, total: m.total, completed: m.completed, expired: m.expired })));
+        setWasteRate(d.wasteRate);
+      }
+      if (ratRes.ok) {
+        const d = await ratRes.json();
+        setTopDonors(d.summary);
+      }
+    } catch {}
+  };
+
 
   useEffect(() => {
-    fetchStats(); fetchUsers(); fetchListings(); fetchRequests();
+    fetchStats(); fetchUsers(); fetchListings(); fetchRequests(); fetchCharts();
+
     pollRef.current = setInterval(() => {
       fetchStats();
       if (activeTab === 'users') fetchUsers();
@@ -197,10 +224,11 @@ export function AdminDashboard() {
             <TabsTrigger value="reports" className="rounded-xl"><ShieldCheck className="w-4 h-4 mr-1" /> Reports</TabsTrigger>
           </TabsList>
 
-          {/* Analytics Tab — Flashcard style */}
+          {/* Analytics Tab */}
           <TabsContent value="analytics">
             {stats ? (
-              <div className="space-y-5">
+              <div className="space-y-8">
+                {/* Flashcards */}
                 <div>
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">👥 Users</p>
                   <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
@@ -227,11 +255,93 @@ export function AdminDashboard() {
                     <FlashCard label="Rejected" value={stats.rejectedRequests} icon={ClipboardList} color="bg-red-400" back="Declined or expired" tab="requests" />
                   </div>
                 </div>
+
+                {/* Food Category Chart */}
+                {foodCategories.length > 0 && (
+                  <Card className="rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <TrendingUp className="w-5 h-5 text-[#2D6A4F]" />
+                      <h3 className="font-semibold text-[#1A1A1A]">Top Food Categories Donated</h3>
+                    </div>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={foodCategories} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          formatter={(val: number, name: string) => [val, name.charAt(0).toUpperCase() + name.slice(1)]}
+                        />
+                        <Bar dataKey="total" fill="#2D6A4F" radius={[6, 6, 0, 0]} name="Total" />
+                        <Bar dataKey="completed" fill="#40916C" radius={[6, 6, 0, 0]} name="Completed" />
+                        <Bar dataKey="expired" fill="#E76F51" radius={[6, 6, 0, 0]} name="Expired" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge className="bg-red-50 text-red-600 text-xs">Food Waste Rate: {wasteRate}%</Badge>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Monthly Trend Chart */}
+                {monthlyTrend.length > 0 && (
+                  <Card className="rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <BarChart3 className="w-5 h-5 text-[#F4A261]" />
+                      <h3 className="font-semibold text-[#1A1A1A]">Monthly Listing Trend</h3>
+                    </div>
+                    <ResponsiveContainer width="100%" height={180}>
+                      <LineChart data={monthlyTrend} margin={{ top: 4, right: 8, left: -16, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                        <Line type="monotone" dataKey="total" stroke="#2D6A4F" strokeWidth={2} dot={{ r: 4 }} name="Total" />
+                        <Line type="monotone" dataKey="completed" stroke="#40916C" strokeWidth={2} dot={{ r: 4 }} name="Completed" />
+                        <Line type="monotone" dataKey="expired" stroke="#E76F51" strokeWidth={2} strokeDasharray="4 2" dot={{ r: 4 }} name="Expired" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Card>
+                )}
+
+                {/* Top Donors by Rating */}
+                {topDonors.length > 0 && (
+                  <Card className="rounded-2xl p-5 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Star className="w-5 h-5 text-[#F4A261] fill-[#F4A261]" />
+                      <h3 className="font-semibold text-[#1A1A1A]">Top Rated Donors</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {topDonors.map((donor: any, i: number) => (
+                        <div key={donor._id} className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-full bg-[#F4A261] text-white text-xs flex items-center justify-center font-bold flex-shrink-0">{i + 1}</span>
+                          <span className="flex-1 text-sm font-medium text-[#1A1A1A] truncate">{donor.name}</span>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 fill-[#F4A261] text-[#F4A261]" />
+                            <span className="text-sm font-semibold text-[#1A1A1A]">{donor.averageRating}</span>
+                            <span className="text-xs text-gray-400">({donor.totalRatings})</span>
+                          </div>
+                          <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#F4A261] rounded-full" style={{ width: `${(donor.averageRating / 5) * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
+                {foodCategories.length === 0 && topDonors.length === 0 && (
+                  <Card className="rounded-2xl p-6 text-center text-gray-400 shadow-sm">
+                    <TrendingUp className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Charts will appear once donations and ratings are recorded.</p>
+                  </Card>
+                )}
               </div>
             ) : (
               <div className="text-center py-12 text-gray-500">Loading stats...</div>
             )}
           </TabsContent>
+
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-4">

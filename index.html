@@ -3,13 +3,41 @@
   <html lang="en">
     <head>
       <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Food Redistribution System</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+      <title>FoodBridge — Connecting Surplus Food to Communities</title>
+      <meta name="description" content="FoodBridge helps donors share surplus food with receivers in need. Reduce waste, feed communities." />
+      <meta name="theme-color" content="#2D6A4F" />
+
+      <!-- PWA -->
+      <link rel="manifest" href="/manifest.json" />
+      <meta name="mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-capable" content="yes" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      <meta name="apple-mobile-web-app-title" content="FoodBridge" />
+
+      <!-- Icons -->
+      <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+
+      <!-- Open Graph -->
+      <meta property="og:title" content="FoodBridge" />
+      <meta property="og:description" content="Connecting surplus food to those who need it." />
+      <meta property="og:type" content="website" />
     </head>
 
     <body>
       <div id="root"></div>
       <script type="module" src="/src/main.tsx"></script>
+      <!-- Register Service Worker -->
+      <script>
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(
+              (reg) => console.log('[SW] Registered:', reg.scope),
+              (err) => console.log('[SW] Registration failed:', err)
+            );
+          });
+        }
+      </script>
     </body>
   </html>
   

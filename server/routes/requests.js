@@ -3,9 +3,12 @@ const router = express.Router();
 const Request = require('../models/Request');
 const FoodListing = require('../models/FoodListing');
 const Notification = require('../models/Notification');
+const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const { sendPickupRequestEmail, sendRequestAcceptedEmail, sendPickupCompletedEmail } = require('../services/emailService');
+
 
 // Create a request (receiver only)
 router.post('/', authMiddleware, async (req, res) => {
@@ -43,7 +46,12 @@ router.post('/', authMiddleware, async (req, res) => {
       relatedModel: 'Request'
     });
 
+    // Email the donor
+    const donor = await User.findById(listing.donorId);
+    if (donor) sendPickupRequestEmail(donor, req.user, listing.foodType).catch(() => {});
+
     res.status(201).json({ request: newRequest });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -164,12 +172,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
       request.qrCode = qrDataUrl;
 
       await FoodListing.findByIdAndUpdate(request.listingId, { status: 'claimed' });
-      // Reject all other pending requests for this listing
       await Request.updateMany(
         { listingId: request.listingId, _id: { $ne: request._id }, status: 'pending' },
         { status: 'rejected', message: 'Another receiver was selected' }
       );
-      // Notify receiver
       await Notification.create({
         userId: request.receiverId,
         type: 'request_accepted',
@@ -178,7 +184,14 @@ router.put('/:id', authMiddleware, async (req, res) => {
         relatedId: request._id,
         relatedModel: 'Request'
       });
+      // Email the receiver
+      const receiver = await User.findById(request.receiverId);
+      const donorUser = await User.findById(request.donorId);
+      if (receiver && listing) {
+        sendRequestAcceptedEmail(receiver, foodName, donorUser?.name || 'Donor', listing.location).catch(() => {});
+      }
     }
+
 
     if (status === 'rejected') {
       await Notification.create({
@@ -211,7 +224,13 @@ router.put('/:id', authMiddleware, async (req, res) => {
         relatedId: request._id,
         relatedModel: 'Request'
       });
+      // Email both parties
+      const receiverUser = await User.findById(request.receiverId);
+      const donorUser2 = await User.findById(request.donorId);
+      if (receiverUser) sendPickupCompletedEmail(receiverUser, foodName, 'receiver').catch(() => {});
+      if (donorUser2) sendPickupCompletedEmail(donorUser2, foodName, 'donor').catch(() => {});
     }
+
 
     await request.save();
     res.json({ request });
