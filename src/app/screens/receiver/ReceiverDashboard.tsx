@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { Bell, MapPin, Clock, Salad, Package, Users, ShieldCheck } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { BottomNav } from '../../components/BottomNav';
+import { LanguageSelector } from '../../components/LanguageSelector';
 import { useListings } from '../../context/ListingsContext';
 import { getAuthHeaders } from '../../context/AuthContext';
 
@@ -17,6 +19,7 @@ const quickFilters = [
 
 export function ReceiverDashboard() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const userName = sessionStorage.getItem('userName') || 'User';
   const { availableListings } = useListings();
   const [myRequests, setMyRequests] = useState<any[]>([]);
@@ -58,9 +61,9 @@ export function ReceiverDashboard() {
   const totalAvailable = availableListings.length;
 
   const stats = [
-    { icon: Package, value: pickupsReceived.toString(), label: 'Pickups Received', color: 'bg-[#F4A261]' },
+    { icon: Package, value: pickupsReceived.toString(), label: t('dashboard.pickupsCompleted'), color: 'bg-[#F4A261]' },
     { icon: Users, value: estimatedPeopleServed > 0 ? `~${estimatedPeopleServed}` : '0', label: 'People Served', color: 'bg-[#2D6A4F]' },
-    { icon: Salad, value: totalAvailable.toString(), label: 'Available Now', color: 'bg-[#E76F51]' },
+    { icon: Salad, value: totalAvailable.toString(), label: t('dashboard.available'), color: 'bg-[#E76F51]' },
   ];
 
   // Show only up to 3 for the dashboard preview
@@ -73,20 +76,23 @@ export function ReceiverDashboard() {
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="font-display text-xl font-bold text-[#1A1A1A]">
-              Welcome back, {userName}
+              {t('common.welcome')}, {userName}
             </h1>
           </div>
-          <button 
-            onClick={() => navigate('/notifications')}
-            className="relative text-gray-600 hover:text-gray-900"
-          >
-            <Bell className="w-6 h-6" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#F4A261] text-white text-xs rounded-full flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-4">
+            <LanguageSelector />
+            <button 
+              onClick={() => navigate('/notifications')}
+              className="relative text-gray-600 hover:text-gray-900 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <Bell className="w-6 h-6" />
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 w-5 h-5 bg-[#F4A261] text-white text-xs rounded-full flex items-center justify-center border-2 border-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -141,12 +147,12 @@ export function ReceiverDashboard() {
         {/* Available Listings */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-bold">Available Near You</h2>
+            <h2 className="font-display text-xl font-bold">{t('dashboard.activeListings')}</h2>
             <button 
               onClick={() => navigate('/receiver/browse')}
               className="text-[#F4A261] text-sm font-semibold hover:underline"
             >
-              See All
+              {t('dashboard.seeAll')}
             </button>
           </div>
           <div className="space-y-4">
