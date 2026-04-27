@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { Bell, Plus, ClipboardList, Package, BarChart3, Clock, Salad, Recycle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { BottomNav } from '../../components/BottomNav';
+import { LanguageSelector } from '../../components/LanguageSelector';
 import { useListings } from '../../context/ListingsContext';
 import { getAuthHeaders } from '../../context/AuthContext';
 
 export function DonorDashboard() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const userName = sessionStorage.getItem('userName') || 'User';
   const { myDonorListings, refreshListings } = useListings();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -36,9 +39,9 @@ export function DonorDashboard() {
   const estimatedMeals = Math.round(totalFoodDonated * 2.5); // Rough estimate
 
   const stats = [
-    { icon: Salad, value: totalFoodDonated.toFixed(0), unit: 'kg', label: 'Food Donated', color: 'bg-[#2D6A4F]' },
-    { icon: Recycle, value: completedPickups.toString(), label: 'Pickups Completed', color: 'bg-[#F4A261]' },
-    { icon: Package, value: `~${estimatedMeals}`, label: 'Meals Enabled', color: 'bg-[#E76F51]' },
+    { icon: Salad, value: totalFoodDonated.toFixed(0), unit: 'kg', label: t('dashboard.totalFoodDonated'), color: 'bg-[#2D6A4F]' },
+    { icon: Recycle, value: completedPickups.toString(), label: t('dashboard.pickupsCompleted'), color: 'bg-[#F4A261]' },
+    { icon: Package, value: `~${estimatedMeals}`, label: t('dashboard.mealsEnabled'), color: 'bg-[#E76F51]' },
   ];
 
   const activities = [
@@ -53,22 +56,25 @@ export function DonorDashboard() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-3">
             <h1 className="font-display text-xl font-bold text-[#1A1A1A]">
-              Good Morning, {userName} 👋
+              {t('common.goodMorning')}, {userName} 👋
             </h1>
           </div>
-          <button 
-            onClick={() => navigate('/notifications')}
-            className="relative text-gray-600 hover:text-gray-900"
-          >
-            <Bell className="w-6 h-6" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#E76F51] text-white text-xs rounded-full flex items-center justify-center">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-4">
+            <LanguageSelector />
+            <button 
+              onClick={() => navigate('/notifications')}
+              className="relative text-gray-600 hover:text-gray-900 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <Bell className="w-6 h-6" />
+              {unreadCount > 0 && (
+                <span className="absolute top-0 right-0 w-5 h-5 bg-[#E76F51] text-white text-xs rounded-full flex items-center justify-center border-2 border-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -92,7 +98,7 @@ export function DonorDashboard() {
             className="bg-[#2D6A4F] hover:bg-[#235a41] text-white rounded-2xl h-20 text-base shadow-lg"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Post New Listing
+            {t('dashboard.postNewListing')}
           </Button>
           <Button 
             onClick={() => navigate('/donor/my-listings')}
@@ -100,7 +106,7 @@ export function DonorDashboard() {
             className="rounded-2xl h-20 text-base shadow-sm border-2"
           >
             <ClipboardList className="w-5 h-5 mr-2" />
-            My Active Listings
+            {t('dashboard.myActiveListings')}
           </Button>
           <Button 
             onClick={() => navigate('/donor/pickup-requests')}
@@ -108,7 +114,7 @@ export function DonorDashboard() {
             className="rounded-2xl h-20 text-base shadow-sm border-2"
           >
             <Package className="w-5 h-5 mr-2" />
-            Pickup Requests
+            {t('dashboard.pickupRequests')}
           </Button>
           <Button 
             onClick={() => navigate('/impact')}
@@ -116,19 +122,17 @@ export function DonorDashboard() {
             className="rounded-2xl h-20 text-base shadow-sm border-2"
           >
             <BarChart3 className="w-5 h-5 mr-2" />
-            My Impact
+            {t('dashboard.myImpact')}
           </Button>
-        </div>
-
-        {/* Active Listings Preview */}
+        </div>        {/* Active Listings Preview */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-xl font-bold">Active Listings</h2>
+            <h2 className="font-display text-xl font-bold">{t('dashboard.activeListings')}</h2>
             <button 
               onClick={() => navigate('/donor/my-listings')}
               className="text-[#2D6A4F] text-sm font-semibold hover:underline"
             >
-              See All
+              {t('dashboard.seeAll')}
             </button>
           </div>
           {activeListings.length === 0 ? (
@@ -180,7 +184,7 @@ export function DonorDashboard() {
 
         {/* Recent Activity Feed */}
         <div>
-          <h2 className="font-display text-xl font-bold mb-4">Recent Activity</h2>
+          <h2 className="font-display text-xl font-bold mb-4">{t('dashboard.recentActivity')}</h2>
           <Card className="rounded-2xl p-4 shadow-sm">
             <div className="space-y-4">
               {activities.map((activity, index) => (
@@ -200,4 +204,4 @@ export function DonorDashboard() {
       <BottomNav role="donor" active="home" />
     </div>
   );
-}
+}

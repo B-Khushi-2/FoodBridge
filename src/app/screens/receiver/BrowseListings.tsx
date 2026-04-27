@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Search, SlidersHorizontal, MapPin, Clock, List, Map as MapIcon, Navigation } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -8,11 +9,14 @@ import { Badge } from '../../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../../components/ui/sheet';
 import { Slider } from '../../components/ui/slider';
 import { BottomNav } from '../../components/BottomNav';
+import { LanguageSelector } from '../../components/LanguageSelector';
+
 import { LocationMap } from '../../components/LocationMap';
 import { getAuthHeaders } from '../../context/AuthContext';
 
 export function BrowseListings() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [distanceRange, setDistanceRange] = useState([10]);
@@ -66,11 +70,14 @@ export function BrowseListings() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center gap-4 mb-3">
-            <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="font-display text-xl font-bold">Browse Listings</h1>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-4">
+              <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <h1 className="font-display text-xl font-bold">{t('listings.browse')}</h1>
+            </div>
+            <LanguageSelector />
           </div>
           
           {/* Search Bar */}
@@ -80,7 +87,7 @@ export function BrowseListings() {
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search food type, donor, area..."
+                placeholder={t('common.search')}
                 className="pl-10 rounded-xl"
               />
             </div>
@@ -174,7 +181,7 @@ export function BrowseListings() {
               className="flex items-center gap-1 px-3 py-1.5 bg-[#EAF4EF] hover:bg-[#d1eadb] text-[#2D6A4F] rounded-full text-xs font-medium transition-colors"
             >
               <Navigation className="w-3.5 h-3.5" />
-              Sort by Nearest
+              {t('dashboard.nearby')}
             </button>
           ) : (
             <Badge className="bg-green-100 text-green-700 text-xs">
