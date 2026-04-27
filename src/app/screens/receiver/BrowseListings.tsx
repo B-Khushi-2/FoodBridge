@@ -245,12 +245,17 @@ export function BrowseListings() {
             <LocationMap
               height="500px"
               zoom={12}
-              markers={availableListings
-                .filter(l => l.location && l.location.lat && l.location.lng)
+              markers={filtered
+                .filter(l => (l.locationCoords?.lat || l.latitude) && (l.locationCoords?.lng || l.longitude))
                 .map(l => ({
-                  lat: l.location.lat,
-                  lng: l.location.lng,
-                  popup: `<div style="min-width:160px"><strong>${l.name}</strong><br/>${l.quantity} ${l.unit}<br/>📍 ${l.address}<br/><em>${l.expiry} left</em></div>`
+                  lat: l.locationCoords?.lat || l.latitude,
+                  lng: l.locationCoords?.lng || l.longitude,
+                  popup: `<div style="min-width:160px">
+                    <strong>${l.foodType}</strong><br/>
+                    ${l.quantity}<br/>
+                    📍 ${l.location || 'No address'}<br/>
+                    ${l.distanceKm ? `<em>${l.distanceKm} km away</em>` : ''}
+                  </div>`
                 }))}
             />
           </Card>
