@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Star, X, Send } from 'lucide-react';
-import { Button } from '../ui/button';
+import { Button } from './ui/button';
 import { getAuthHeaders } from '../../context/AuthContext';
 import { toast } from 'sonner';
 

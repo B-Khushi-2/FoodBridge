@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { getAuthHeaders, getUser } from '../../context/AuthContext';
+import { getAuthHeaders, useAuth } from '../../context/AuthContext';
 import { io, Socket } from 'socket.io-client';
 
 const quickReplies = ['On my way!', 'Ready for pickup', 'Thank you! 🙏', 'Running 10 mins late', 'Arrived!'];
@@ -30,7 +30,7 @@ export function Chat() {
   const [otherName, setOtherName] = useState('User');
   const socketRef = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
-  const currentUser = getUser();
+  const { user: currentUser } = useAuth();
 
   // Load history
   useEffect(() => {
@@ -83,7 +83,7 @@ export function Chat() {
     if (!message.trim() || !socketRef.current || !currentUser) return;
     socketRef.current.emit('send_message', {
       roomId,
-      senderId: currentUser.id,
+      senderId: currentUser._id,
       senderName: currentUser.name,
       text: message.trim()
     });
@@ -94,13 +94,13 @@ export function Chat() {
     if (!socketRef.current || !currentUser) return;
     socketRef.current.emit('send_message', {
       roomId,
-      senderId: currentUser.id,
+      senderId: currentUser._id,
       senderName: currentUser.name,
       text: reply
     });
   };
 
-  const isMe = (msg: Message) => msg.senderId === currentUser?.id;
+  const isMe = (msg: Message) => msg.senderId === currentUser?._id;
 
   return (
     <div className="min-h-screen bg-[#FAFAF7] flex flex-col">
