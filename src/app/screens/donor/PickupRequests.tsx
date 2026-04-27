@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Phone, Star, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
+import { ArrowLeft, Phone, Star, CheckCircle, XCircle, Clock, Package, MessageCircle } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -168,6 +168,13 @@ export function PickupRequests() {
                         <span>{receiver.phone}</span>
                       </div>
                     )}
+                    <button
+                      onClick={() => navigate(`/chat/${listing._id}/${request._id}`)}
+                      className="flex items-center gap-2 w-full justify-center py-2 bg-[#2D6A4F] hover:bg-[#235a41] text-white rounded-xl text-sm font-medium transition-colors mt-1"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      Chat with Receiver
+                    </button>
                   </div>
                 )}
 

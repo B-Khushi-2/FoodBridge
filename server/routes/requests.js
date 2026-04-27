@@ -4,6 +4,8 @@ const Request = require('../models/Request');
 const FoodListing = require('../models/FoodListing');
 const Notification = require('../models/Notification');
 const { authMiddleware } = require('../middleware/auth');
+const QRCode = require('qrcode');
+const crypto = require('crypto');
 
 // Create a request (receiver only)
 router.post('/', authMiddleware, async (req, res) => {
@@ -73,6 +75,50 @@ router.get('/donor', authMiddleware, async (req, res) => {
   }
 });
 
+// Verify QR token (receiver scans QR → complete pickup)
+router.post('/verify-qr', authMiddleware, async (req, res) => {
+  try {
+    const { qrToken } = req.body;
+    const request = await Request.findOne({ qrToken, status: 'accepted' });
+    if (!request) {
+      return res.status(404).json({ error: 'Invalid or already used QR code' });
+    }
+    if (request.receiverId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'QR code does not belong to you' });
+    }
+
+    const listing = await FoodListing.findById(request.listingId);
+    const foodName = listing?.foodType || 'food';
+
+    request.status = 'completed';
+    request.pickedUpAt = new Date();
+    await request.save();
+
+    await FoodListing.findByIdAndUpdate(request.listingId, { status: 'completed' });
+
+    await Notification.create({
+      userId: request.receiverId,
+      type: 'request_completed',
+      title: 'Pickup Verified! 🌍',
+      message: `QR verified! You successfully received "${foodName}". Thank you for reducing food waste!`,
+      relatedId: request._id,
+      relatedModel: 'Request'
+    });
+    await Notification.create({
+      userId: request.donorId,
+      type: 'request_completed',
+      title: 'Donation Picked Up! 🎉',
+      message: `"${foodName}" was picked up and QR verified. Thank you for your generosity!`,
+      relatedId: request._id,
+      relatedModel: 'Request'
+    });
+
+    res.json({ success: true, request });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update request status (donor accepts/rejects)
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
@@ -81,10 +127,9 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (!request) {
       return res.status(404).json({ error: 'Request not found' });
     }
-    // Donor can accept/reject/complete, Receiver can cancel pending
     const isDonor = request.donorId.toString() === req.user._id.toString();
     const isReceiver = request.receiverId.toString() === req.user._id.toString();
-    
+
     if (!isDonor && !isReceiver) {
       return res.status(403).json({ error: 'Not authorized' });
     }
@@ -97,32 +142,45 @@ router.put('/:id', authMiddleware, async (req, res) => {
     }
 
     request.status = status;
-    await request.save();
 
-    // If accepted, mark listing as claimed so it won't be expired by cron
     const listing = await FoodListing.findById(request.listingId);
     const foodName = listing?.foodType || 'food';
 
     if (status === 'accepted') {
+      // Generate QR code for pickup verification
+      const qrToken = crypto.randomBytes(20).toString('hex');
+      const qrPayload = JSON.stringify({
+        token: qrToken,
+        requestId: request._id.toString(),
+        food: foodName
+      });
+      const qrDataUrl = await QRCode.toDataURL(qrPayload, {
+        width: 300,
+        margin: 2,
+        color: { dark: '#2D6A4F', light: '#FFFFFF' }
+      });
+
+      request.qrToken = qrToken;
+      request.qrCode = qrDataUrl;
+
       await FoodListing.findByIdAndUpdate(request.listingId, { status: 'claimed' });
       // Reject all other pending requests for this listing
       await Request.updateMany(
         { listingId: request.listingId, _id: { $ne: request._id }, status: 'pending' },
         { status: 'rejected', message: 'Another receiver was selected' }
       );
-      // Notify receiver their request was accepted
+      // Notify receiver
       await Notification.create({
         userId: request.receiverId,
         type: 'request_accepted',
         title: 'Request Accepted! 🎉',
-        message: `Your pickup request for "${foodName}" has been accepted. Go pick it up!`,
+        message: `Your pickup request for "${foodName}" has been accepted. Check your QR code for pickup!`,
         relatedId: request._id,
         relatedModel: 'Request'
       });
     }
 
     if (status === 'rejected') {
-      // Notify receiver their request was rejected
       await Notification.create({
         userId: request.receiverId,
         type: 'request_rejected',
@@ -133,10 +191,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
       });
     }
 
-    // If completed, mark listing as completed too
+    // Manual completion (fallback if QR not used)
     if (status === 'completed') {
       await FoodListing.findByIdAndUpdate(request.listingId, { status: 'completed' });
-      // Notify both parties
+      request.pickedUpAt = new Date();
       await Notification.create({
         userId: request.receiverId,
         type: 'request_completed',
@@ -155,6 +213,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       });
     }
 
+    await request.save();
     res.json({ request });
   } catch (err) {
     res.status(500).json({ error: err.message });

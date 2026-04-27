@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, MapPin, Clock, Star, Phone, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Star, Phone, CheckCircle, XCircle, AlertCircle, QrCode, MessageCircle } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -114,9 +114,9 @@ export function MyRequests() {
           </div>
         )}
 
-        {/* Accepted — show pickup details */}
+        {/* Accepted — show pickup details + QR code */}
         {request.status === 'accepted' && (
-          <div className="bg-green-50 border-t border-green-100 px-4 py-3 space-y-2">
+          <div className="bg-green-50 border-t border-green-100 px-4 py-3 space-y-3">
             <p className="text-sm text-green-700 font-semibold">🎉 Donor accepted your request! Go pick it up:</p>
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-green-700" />
@@ -132,6 +132,28 @@ export function MyRequests() {
                 <span className="text-green-700">{donor.phone}</span>
               </div>
             )}
+            {/* QR Code for pickup verification */}
+            {request.qrCode && (
+              <div className="mt-3 p-3 bg-white rounded-xl border border-green-200 text-center">
+                <p className="text-xs text-green-700 font-semibold mb-2">📲 Your Pickup QR Code</p>
+                <img src={request.qrCode} alt="Pickup QR" className="w-36 h-36 mx-auto rounded-lg" />
+                <p className="text-xs text-gray-500 mt-2">Show this to the donor or scan at pickup</p>
+                <button
+                  onClick={() => navigate('/receiver/qr-scanner')}
+                  className="mt-2 text-xs text-[#2D6A4F] underline font-medium"
+                >
+                  Or verify pickup manually →
+                </button>
+              </div>
+            )}
+            {/* Chat button */}
+            <button
+              onClick={() => navigate(`/chat/${listing._id}/${request._id}`)}
+              className="flex items-center gap-2 w-full justify-center py-2 bg-[#2D6A4F] hover:bg-[#235a41] text-white rounded-xl text-sm font-medium transition-colors"
+            >
+              <MessageCircle className="w-4 h-4" />
+              Chat with Donor
+            </button>
           </div>
         )}
 
@@ -165,7 +187,16 @@ export function MyRequests() {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="font-display text-xl font-bold">My Requests</h1>
-          <span className="ml-auto text-sm text-gray-500">{requests.length} total</span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-sm text-gray-500">{requests.length} total</span>
+            <button
+              onClick={() => navigate('/receiver/qr-scanner')}
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#EAF4EF] hover:bg-[#d1eadb] text-[#2D6A4F] rounded-full text-xs font-medium transition-colors"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              Scan QR
+            </button>
+          </div>
         </div>
       </div>
 

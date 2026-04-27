@@ -13,6 +13,7 @@ import { ReceiverDashboard } from "./screens/receiver/ReceiverDashboard";
 import { BrowseListings } from "./screens/receiver/BrowseListings";
 import { ReceiverListingDetail } from "./screens/receiver/ReceiverListingDetail";
 import { MyRequests } from "./screens/receiver/MyRequests";
+import { QRScanner } from "./screens/receiver/QRScanner";
 import { Notifications } from "./screens/shared/Notifications";
 import { Profile } from "./screens/shared/Profile";
 import { ImpactReport } from "./screens/shared/ImpactReport";
@@ -23,13 +24,6 @@ import { AdminDashboard } from "./screens/admin/AdminDashboard";
 
 /**
  * FoodBridge - Food Redistribution System Routes
- * 
- * This application features two distinct user roles:
- * - Donors: Post food listings, manage pickup requests, track impact
- * - Receivers: Browse listings, request pickups, track received food
- * 
- * The app uses mock data stored in localStorage for user authentication
- * and role management. In production, this would connect to a backend API.
  */
 
 export const router = createBrowserRouter([
@@ -53,6 +47,7 @@ export const router = createBrowserRouter([
     path: "/login",
     Component: Login,
   },
+  // ── Donor ────────────────────────────────────
   {
     path: "/donor/dashboard",
     Component: DonorDashboard,
@@ -73,6 +68,7 @@ export const router = createBrowserRouter([
     path: "/donor/listing/:id",
     Component: DonorListingDetail,
   },
+  // ── Receiver ─────────────────────────────────
   {
     path: "/receiver/dashboard",
     Component: ReceiverDashboard,
@@ -90,6 +86,11 @@ export const router = createBrowserRouter([
     Component: MyRequests,
   },
   {
+    path: "/receiver/qr-scanner",
+    Component: QRScanner,
+  },
+  // ── Shared ───────────────────────────────────
+  {
     path: "/notifications",
     Component: Notifications,
   },
@@ -105,10 +106,12 @@ export const router = createBrowserRouter([
     path: "/report",
     Component: ReportIssue,
   },
+  // Chat: roomId = listingId_requestId
   {
-    path: "/chat/:listingId",
+    path: "/chat/:listingId/:requestId",
     Component: Chat,
   },
+  // ── Admin ────────────────────────────────────
   {
     path: "/admin/dashboard",
     Component: AdminDashboard,

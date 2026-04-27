@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Search, SlidersHorizontal, MapPin, Clock, List, Map as MapIcon } from 'lucide-react';
+import { ArrowLeft, Search, SlidersHorizontal, MapPin, Clock, List, Map as MapIcon, Navigation } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
@@ -8,15 +8,58 @@ import { Badge } from '../../components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../../components/ui/sheet';
 import { Slider } from '../../components/ui/slider';
 import { BottomNav } from '../../components/BottomNav';
-import { useListings } from '../../context/ListingsContext';
 import { LocationMap } from '../../components/LocationMap';
+import { getAuthHeaders } from '../../context/AuthContext';
 
 export function BrowseListings() {
-  const { availableListings } = useListings();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [distanceRange, setDistanceRange] = useState([5]);
+  const [distanceRange, setDistanceRange] = useState([10]);
+  const [listings, setListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [geoEnabled, setGeoEnabled] = useState(false);
+
+  const fetchListings = async (lat?: number, lng?: number, radius?: number) => {
+    setLoading(true);
+    try {
+      let url = '/api/food';
+      if (lat && lng) {
+        url = `/api/geo/nearby-listings?lat=${lat}&lng=${lng}&radius=${radius || distanceRange[0]}`;
+      }
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setListings(data.listings || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch listings', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const enableGeo = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUserLocation({ lat: latitude, lng: longitude });
+        setGeoEnabled(true);
+        fetchListings(latitude, longitude, distanceRange[0]);
+      },
+      () => { fetchListings(); }
+    );
+  };
+
+  useEffect(() => { fetchListings(); }, []);
+
+  const filtered = listings.filter(l =>
+    !searchQuery ||
+    l.foodType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    l.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
@@ -122,46 +165,71 @@ export function BrowseListings() {
           </Button>
         </div>
 
-        {/* Results Count */}
-        <p className="text-sm text-gray-600 mb-4">{availableListings.length} listings found</p>
+        {/* Results Count + Geo toggle */}
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-600">{filtered.length} listings found</p>
+          {!geoEnabled ? (
+            <button
+              onClick={enableGeo}
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#EAF4EF] hover:bg-[#d1eadb] text-[#2D6A4F] rounded-full text-xs font-medium transition-colors"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              Sort by Nearest
+            </button>
+          ) : (
+            <Badge className="bg-green-100 text-green-700 text-xs">
+              <Navigation className="w-3 h-3 mr-1" />
+              Sorted by distance
+            </Badge>
+          )}
+        </div>
 
-        {/* Listings */}
         {viewMode === 'list' ? (
           <div className="space-y-4">
-            {availableListings.map((listing) => (
-              <Card 
-                key={listing.id}
-                onClick={() => navigate(`/receiver/listing/${listing.id}`)}
+            {loading && <p className="text-center text-gray-400 py-8">Loading listings...</p>}
+            {!loading && filtered.length === 0 && (
+              <p className="text-center text-gray-400 py-8">No listings found.</p>
+            )}
+            {filtered.map((listing) => (
+              <Card
+                key={listing._id}
+                onClick={() => navigate(`/receiver/listing/${listing._id}`)}
                 className="rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer"
               >
                 <div className="flex gap-4 p-4">
-                  <img src={listing.image || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop'} alt={listing.name} className="w-28 h-28 rounded-xl object-cover flex-shrink-0" />
+                  <img src={listing.image || 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400&h=300&fit=crop'} alt={listing.foodType} className="w-28 h-28 rounded-xl object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-[#1A1A1A] mb-1 truncate">{listing.name}</h3>
+                    <h3 className="font-semibold text-[#1A1A1A] mb-1 truncate">{listing.foodType}</h3>
                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                      <span className="truncate">{listing.donorName}</span>
-                      <span>★ {listing.donorRating}</span>
+                      <span className="truncate">{listing.donorId?.name || 'Donor'}</span>
                     </div>
                     <div className="flex items-center gap-2 mb-2">
                       <MapPin className="w-4 h-4 text-gray-500" />
-                      <span className="text-sm text-gray-600">{listing.distance}</span>
+                      <span className="text-sm text-gray-600 truncate">{listing.location}</span>
+                      {listing.distanceKm !== undefined && (
+                        <Badge className="bg-blue-50 text-blue-700 text-xs rounded-full ml-1">
+                          📍 {listing.distanceKm} km away
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-gray-100 text-gray-700 text-xs rounded-full">
-                        {listing.quantity} {listing.unit}
+                        {listing.quantity}
                       </Badge>
-                      <Badge className={`${listing.expiry === 'Expired' || listing.expiry.includes('2h') || listing.expiry.includes('3h') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'} text-xs rounded-full`}>
-                        <Clock className="w-3 h-3 mr-1" />
-                        {listing.expiry}
-                      </Badge>
+                      {listing.expiryTime && (
+                        <Badge className="bg-green-100 text-green-700 text-xs rounded-full">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Expires {new Date(listing.expiryTime).toLocaleDateString()}
+                        </Badge>
+                      )}
                       {listing.imageAnalysis?.verdict && (
                         <Badge className={`text-xs rounded-full ${
                           listing.imageAnalysis.verdict === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                           listing.imageAnalysis.verdict === 'suspected' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                           'bg-red-50 text-red-700 border border-red-200'
                         }`}>
-                          {listing.imageAnalysis.verdict === 'approved' ? `✅ Fresh ${Math.round(listing.imageAnalysis.freshness * 100)}%` :
-                           listing.imageAnalysis.verdict === 'suspected' ? '⚠️ Quality Review' :
+                          {listing.imageAnalysis.verdict === 'approved' ? `✅ Verified` :
+                           listing.imageAnalysis.verdict === 'suspected' ? '⚠️ Review' :
                            '❌ Unverified'}
                         </Badge>
                       )}
@@ -171,6 +239,7 @@ export function BrowseListings() {
               </Card>
             ))}
           </div>
+
         ) : (
           <Card className="rounded-2xl overflow-hidden">
             <LocationMap

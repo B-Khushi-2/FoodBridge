@@ -1,5 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
@@ -10,9 +12,18 @@ const adminRoutes = require('./routes/admin');
 const analyzeRoutes = require('./routes/analyze');
 const reportRoutes = require('./routes/reports');
 const notificationRoutes = require('./routes/notifications');
+const chatRoutes = require('./routes/chat');
+const geoRoutes = require('./routes/geo');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*', methods: ['GET', 'POST'] }
+});
 const PORT = process.env.PORT || 5000;
+
+// Make io available to routes
+app.set('io', io);
 
 // Middleware
 app.use(cors());
@@ -27,23 +38,58 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/analyze', analyzeRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/geo', geoRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', timestamp: new Date().toISOString() });
 });
 
-// Start server
+// ─── Socket.io Real-time Chat ──────────────────────────────────────────────
+const ChatMessage = require('./models/ChatMessage');
+
+io.on('connection', (socket) => {
+  console.log(`[Socket] Client connected: ${socket.id}`);
+
+  // Join a chat room (roomId = listingId_requestId)
+  socket.on('join_room', (roomId) => {
+    socket.join(roomId);
+    console.log(`[Socket] ${socket.id} joined room: ${roomId}`);
+  });
+
+  // Receive and broadcast message
+  socket.on('send_message', async (data) => {
+    try {
+      const { roomId, senderId, senderName, text } = data;
+      if (!roomId || !senderId || !text?.trim()) return;
+
+      const msg = await ChatMessage.create({ roomId, senderId, senderName, text: text.trim() });
+      // Broadcast to everyone in the room (including sender)
+      io.to(roomId).emit('new_message', msg);
+    } catch (err) {
+      console.error('[Socket] Message save error:', err.message);
+    }
+  });
+
+  socket.on('leave_room', (roomId) => {
+    socket.leave(roomId);
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`[Socket] Client disconnected: ${socket.id}`);
+  });
+});
+
+// ─── Start Server ──────────────────────────────────────────────────────────
 const startServer = async () => {
   try {
     let mongoUri = process.env.MONGO_URI;
 
     if (mongoUri) {
-      // Real MongoDB (Atlas or local)
       await mongoose.connect(mongoUri);
       console.log('✅ Connected to MongoDB:', mongoUri.includes('mongodb+srv') ? 'Atlas' : 'Local');
     } else {
-      // Fallback to in-memory (dev only)
       const { MongoMemoryServer } = require('mongodb-memory-server');
       const mongoServer = await MongoMemoryServer.create();
       mongoUri = mongoServer.getUri();
@@ -90,7 +136,6 @@ const startServer = async () => {
             { listingId: { $in: expiredIds }, status: 'pending' },
             { status: 'rejected', message: 'Listing expired' }
           );
-          // Notify donors about expired listings
           const donorNotifications = expiredListings.map(l => ({
             userId: l.donorId,
             type: 'listing_expired',
@@ -107,8 +152,9 @@ const startServer = async () => {
       }
     }, 60000);
 
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
+      console.log(`🔌 Socket.io real-time chat enabled`);
     });
   } catch (err) {
     console.error('Failed to start server:', err);
