@@ -15,6 +15,7 @@ const notificationRoutes = require('./routes/notifications');
 const chatRoutes = require('./routes/chat');
 const geoRoutes = require('./routes/geo');
 const ratingsRoutes = require('./routes/ratings');
+const statsRoutes = require('./routes/stats');
 
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/geo', geoRoutes);
 app.use('/api/ratings', ratingsRoutes);
+app.use('/api/stats', statsRoutes);
 
 
 // Health check

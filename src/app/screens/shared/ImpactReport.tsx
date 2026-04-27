@@ -1,44 +1,61 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, TrendingUp, Award, Share2 } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
-
-const userRole = sessionStorage.getItem('userRole') || 'donor';
-
-const donorImpact = {
-  totalFood: 42,
-  mealsEnabled: 90,
-  co2Saved: 63,
-  pickups: 18,
-  monthlyTrend: [8, 12, 15, 18, 22, 28, 32, 38, 42],
-  badges: [
-    { name: 'Food Hero', description: 'Donated 40+ kg of food', icon: '🏆', unlocked: true },
-    { name: 'Green Champion', description: 'Saved 50+ kg CO2', icon: '🌱', unlocked: true },
-    { name: 'Community Star', description: '25+ successful pickups', icon: '⭐', unlocked: false },
-    { name: 'Zero Waste Warrior', description: '100+ kg donated', icon: '♻️', unlocked: false },
-  ]
-};
-
-const receiverImpact = {
-  pickupsReceived: 28,
-  peopleServed: 140,
-  cattleFeeds: 12,
-  activeDays: 45,
-  monthlyTrend: [5, 8, 12, 16, 18, 22, 24, 26, 28],
-  badges: [
-    { name: 'Community Helper', description: '20+ pickups completed', icon: '🤝', unlocked: true },
-    { name: 'Hunger Fighter', description: 'Served 100+ people', icon: '🍱', unlocked: true },
-    { name: 'Active Receiver', description: '30+ active days', icon: '📅', unlocked: true },
-    { name: 'Impact Maker', description: '50+ pickups', icon: '🎯', unlocked: false },
-  ]
-};
-
-const impact = userRole === 'donor' ? donorImpact : receiverImpact;
+import { getAuthHeaders } from '../../context/AuthContext';
 
 export function ImpactReport() {
   const navigate = useNavigate();
+  const userRole = sessionStorage.getItem('userRole') || 'donor';
+  const [realStats, setRealStats] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/stats/user', { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          setRealStats(data.stats);
+        }
+      } catch (err) {
+        console.error('Failed to fetch impact stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  const donorImpact = {
+    totalFood: realStats?.totalFood || 0,
+    mealsEnabled: realStats?.mealsEnabled || 0,
+    co2Saved: realStats?.co2Saved || 0,
+    pickups: realStats?.pickups || 0,
+    monthlyTrend: [2, 4, 3, 5, 8, realStats?.pickups || 0],
+    badges: [
+      { name: 'Food Hero', description: 'Donated 40+ kg of food', icon: '🏆', unlocked: (realStats?.totalFood || 0) >= 40 },
+      { name: 'Green Champion', description: 'Saved 50+ kg CO2', icon: '🌱', unlocked: (realStats?.co2Saved || 0) >= 50 },
+      { name: 'Community Star', description: '25+ successful pickups', icon: '⭐', unlocked: (realStats?.pickups || 0) >= 25 },
+      { name: 'Zero Waste Warrior', description: '100+ kg donated', icon: '♻️', unlocked: (realStats?.totalFood || 0) >= 100 },
+    ]
+  };
+
+  const receiverImpact = {
+    pickupsReceived: realStats?.pickupsReceived || 0,
+    peopleServed: realStats?.peopleServed || 0,
+    cattleFeeds: Math.round((realStats?.pickupsReceived || 0) * 0.3),
+    activeDays: Math.round((realStats?.pickupsReceived || 0) * 1.5),
+    monthlyTrend: [1, 2, 3, 4, 5, realStats?.pickupsReceived || 0],
+    badges: [
+      { name: 'Community Helper', description: '20+ pickups completed', icon: '🤝', unlocked: (realStats?.pickupsReceived || 0) >= 20 },
+      { name: 'Hunger Fighter', description: 'Served 100+ people', icon: '🍱', unlocked: (realStats?.peopleServed || 0) >= 100 },
+      { name: 'Active Receiver', description: '30+ active days', icon: '📅', unlocked: Math.round((realStats?.pickupsReceived || 0) * 1.5) >= 30 },
+      { name: 'Impact Maker', description: '50+ pickups', icon: '🎯', unlocked: (realStats?.pickupsReceived || 0) >= 50 },
+    ]
+  };
+
+  const impact = userRole === 'donor' ? donorImpact : receiverImpact;
 
   return (
     <div className="min-h-screen bg-[#FAFAF7] pb-24">

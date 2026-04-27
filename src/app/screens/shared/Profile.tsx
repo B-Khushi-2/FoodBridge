@@ -1,26 +1,44 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft, Edit, ChevronRight, Bell, MapPin, Shield, HelpCircle, LogOut, Award } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { BottomNav } from '../../components/BottomNav';
 import { useAuth } from '../../context/AuthContext';
+import { getAuthHeaders } from '../../context/AuthContext';
 
 export function Profile() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const userName = user?.name || sessionStorage.getItem('userName') || 'User';
   const userRole = user?.role || sessionStorage.getItem('userRole') || 'donor';
+  const [realStats, setRealStats] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/stats/user', { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          setRealStats(data.stats);
+        }
+      } catch (err) {
+        console.error('Failed to fetch profile stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
 
   const stats = userRole === 'donor' 
     ? [
-        { label: 'Food Donated', value: '42 kg' },
-        { label: 'Pickups', value: '18' },
-        { label: 'Meals Enabled', value: '~90' },
+        { label: 'Food Donated', value: `${realStats?.totalFood || 0} kg` },
+        { label: 'Pickups', value: `${realStats?.pickups || 0}` },
+        { label: 'Meals Enabled', value: `~${realStats?.mealsEnabled || 0}` },
       ]
     : [
-        { label: 'Pickups Received', value: '28' },
-        { label: 'People Served', value: '~140' },
-        { label: 'Active Requests', value: '3' },
+        { label: 'Pickups Received', value: `${realStats?.pickupsReceived || 0}` },
+        { label: 'People Served', value: `~${realStats?.peopleServed || 0}` },
+        { label: 'Active Requests', value: `${realStats?.activeRequests || 0}` },
       ];
 
   const handleLogout = () => {
