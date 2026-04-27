@@ -9,6 +9,7 @@ const requestRoutes = require('./routes/requests');
 const adminRoutes = require('./routes/admin');
 const analyzeRoutes = require('./routes/analyze');
 const reportRoutes = require('./routes/reports');
+const notificationRoutes = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +26,7 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analyze', analyzeRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -70,6 +72,7 @@ const startServer = async () => {
     // Auto-expire cron: runs every 60 seconds
     const FoodListing = require('./models/FoodListing');
     const Request = require('./models/Request');
+    const Notification = require('./models/Notification');
     setInterval(async () => {
       try {
         const now = new Date();
@@ -87,7 +90,17 @@ const startServer = async () => {
             { listingId: { $in: expiredIds }, status: 'pending' },
             { status: 'rejected', message: 'Listing expired' }
           );
-          console.log(`[Cron] Expired ${expiredListings.length} listing(s)`);
+          // Notify donors about expired listings
+          const donorNotifications = expiredListings.map(l => ({
+            userId: l.donorId,
+            type: 'listing_expired',
+            title: 'Listing Expired',
+            message: `Your listing "${l.foodType}" has expired and is no longer visible to receivers.`,
+            relatedId: l._id,
+            relatedModel: 'FoodListing'
+          }));
+          await Notification.insertMany(donorNotifications);
+          console.log(`[Cron] Expired ${expiredListings.length} listing(s) + notified donors`);
         }
       } catch (err) {
         console.error('[Cron] Expiry check failed:', err.message);

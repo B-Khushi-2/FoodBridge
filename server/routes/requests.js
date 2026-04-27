@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Request = require('../models/Request');
 const FoodListing = require('../models/FoodListing');
+const Notification = require('../models/Notification');
 const { authMiddleware } = require('../middleware/auth');
 
 // Create a request (receiver only)
@@ -29,6 +30,17 @@ router.post('/', authMiddleware, async (req, res) => {
       message
     });
     await newRequest.save();
+
+    // Notify the donor about the new pickup request
+    await Notification.create({
+      userId: listing.donorId,
+      type: 'request_received',
+      title: 'New Pickup Request',
+      message: `${req.user.name} wants to pick up your "${listing.foodType}" listing.`,
+      relatedId: newRequest._id,
+      relatedModel: 'Request'
+    });
+
     res.status(201).json({ request: newRequest });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -88,6 +100,9 @@ router.put('/:id', authMiddleware, async (req, res) => {
     await request.save();
 
     // If accepted, mark listing as claimed so it won't be expired by cron
+    const listing = await FoodListing.findById(request.listingId);
+    const foodName = listing?.foodType || 'food';
+
     if (status === 'accepted') {
       await FoodListing.findByIdAndUpdate(request.listingId, { status: 'claimed' });
       // Reject all other pending requests for this listing
@@ -95,11 +110,49 @@ router.put('/:id', authMiddleware, async (req, res) => {
         { listingId: request.listingId, _id: { $ne: request._id }, status: 'pending' },
         { status: 'rejected', message: 'Another receiver was selected' }
       );
+      // Notify receiver their request was accepted
+      await Notification.create({
+        userId: request.receiverId,
+        type: 'request_accepted',
+        title: 'Request Accepted! 🎉',
+        message: `Your pickup request for "${foodName}" has been accepted. Go pick it up!`,
+        relatedId: request._id,
+        relatedModel: 'Request'
+      });
+    }
+
+    if (status === 'rejected') {
+      // Notify receiver their request was rejected
+      await Notification.create({
+        userId: request.receiverId,
+        type: 'request_rejected',
+        title: 'Request Declined',
+        message: `Your pickup request for "${foodName}" was declined by the donor.`,
+        relatedId: request._id,
+        relatedModel: 'Request'
+      });
     }
 
     // If completed, mark listing as completed too
     if (status === 'completed') {
       await FoodListing.findByIdAndUpdate(request.listingId, { status: 'completed' });
+      // Notify both parties
+      await Notification.create({
+        userId: request.receiverId,
+        type: 'request_completed',
+        title: 'Pickup Completed! 🌍',
+        message: `You successfully received "${foodName}". Thank you for reducing food waste!`,
+        relatedId: request._id,
+        relatedModel: 'Request'
+      });
+      await Notification.create({
+        userId: request.donorId,
+        type: 'request_completed',
+        title: 'Donation Completed! 🎉',
+        message: `Your "${foodName}" was successfully picked up. Thank you for your generosity!`,
+        relatedId: request._id,
+        relatedModel: 'Request'
+      });
     }
 
     res.json({ request });

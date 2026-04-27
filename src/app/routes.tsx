@@ -16,6 +16,7 @@ import { MyRequests } from "./screens/receiver/MyRequests";
 import { Notifications } from "./screens/shared/Notifications";
 import { Profile } from "./screens/shared/Profile";
 import { ImpactReport } from "./screens/shared/ImpactReport";
+import { ReportIssue } from "./screens/shared/ReportIssue";
 import { Chat } from "./screens/shared/Chat";
 import { NotFound } from "./screens/NotFound";
 import { AdminDashboard } from "./screens/admin/AdminDashboard";
@@ -99,6 +100,10 @@ export const router = createBrowserRouter([
   {
     path: "/impact",
     Component: ImpactReport,
+  },
+  {
+    path: "/report",
+    Component: ReportIssue,
   },
   {
     path: "/chat/:listingId",

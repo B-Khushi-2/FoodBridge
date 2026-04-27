@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Bell, Plus, ClipboardList, Package, BarChart3, Clock, Salad, Recycle } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -5,11 +6,25 @@ import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { BottomNav } from '../../components/BottomNav';
 import { useListings } from '../../context/ListingsContext';
+import { getAuthHeaders } from '../../context/AuthContext';
 
 export function DonorDashboard() {
   const navigate = useNavigate();
   const userName = sessionStorage.getItem('userName') || 'User';
   const { myDonorListings, refreshListings } = useListings();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch('/api/notifications/unread-count', { headers: getAuthHeaders() });
+        if (res.ok) { const d = await res.json(); setUnreadCount(d.count); }
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // My listings by status
   const activeListings = myDonorListings.filter(l => l.status === 'Available' || l.status === 'Reserved').slice(0, 5);
@@ -48,9 +63,11 @@ export function DonorDashboard() {
             className="relative text-gray-600 hover:text-gray-900"
           >
             <Bell className="w-6 h-6" />
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#E76F51] text-white text-xs rounded-full flex items-center justify-center">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#E76F51] text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
         </div>
       </div>

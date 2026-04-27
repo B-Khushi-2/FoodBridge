@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '../.
 import { Slider } from '../../components/ui/slider';
 import { BottomNav } from '../../components/BottomNav';
 import { useListings } from '../../context/ListingsContext';
+import { LocationMap } from '../../components/LocationMap';
 
 export function BrowseListings() {
   const { availableListings } = useListings();
@@ -171,12 +172,18 @@ export function BrowseListings() {
             ))}
           </div>
         ) : (
-          <Card className="rounded-2xl p-4">
-            <div className="h-[500px] bg-gray-200 rounded-xl flex flex-col items-center justify-center">
-              <MapPin className="w-16 h-16 text-gray-400 mb-4" />
-              <p className="text-gray-600">Map View</p>
-              <p className="text-sm text-gray-500 mt-2">Showing {availableListings.length} listings on map</p>
-            </div>
+          <Card className="rounded-2xl overflow-hidden">
+            <LocationMap
+              height="500px"
+              zoom={12}
+              markers={availableListings
+                .filter(l => l.location && l.location.lat && l.location.lng)
+                .map(l => ({
+                  lat: l.location.lat,
+                  lng: l.location.lng,
+                  popup: `<div style="min-width:160px"><strong>${l.name}</strong><br/>${l.quantity} ${l.unit}<br/>📍 ${l.address}<br/><em>${l.expiry} left</em></div>`
+                }))}
+            />
           </Card>
         )}
       </div>

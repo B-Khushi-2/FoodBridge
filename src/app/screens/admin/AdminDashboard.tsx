@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Users, Package, ClipboardList, BarChart3, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Users, Package, ClipboardList, BarChart3, Trash2, RefreshCw, AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -42,6 +42,9 @@ export function AdminDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [listings, setListings] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [reverifying, setReverifying] = useState<string | null>(null);
+  const [expandedReport, setExpandedReport] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('analytics');
   const [tabsRef] = useState<{ select?: (v: string) => void }>({});
   const [currentTab, setCurrentTab] = useState('analytics');
@@ -71,6 +74,12 @@ export function AdminDashboard() {
       if (res.ok) { const d = await res.json(); setRequests(d.requests); }
     } catch {}
   };
+  const fetchReports = async () => {
+    try {
+      const res = await fetch('/api/reports/admin', { headers: getAuthHeaders() });
+      if (res.ok) { const d = await res.json(); setReports(d.reports); }
+    } catch {}
+  };
 
   useEffect(() => {
     fetchStats(); fetchUsers(); fetchListings(); fetchRequests();
@@ -79,6 +88,7 @@ export function AdminDashboard() {
       if (activeTab === 'users') fetchUsers();
       if (activeTab === 'listings') fetchListings();
       if (activeTab === 'requests') fetchRequests();
+      if (activeTab === 'reports') fetchReports();
     }, 15000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [activeTab]);
@@ -90,6 +100,7 @@ export function AdminDashboard() {
     if (val === 'users') fetchUsers();
     if (val === 'listings') fetchListings();
     if (val === 'requests') fetchRequests();
+    if (val === 'reports') fetchReports();
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -103,6 +114,20 @@ export function AdminDashboard() {
       await fetch(`/api/admin/listings/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
       toast.success('Listing deleted'); fetchListings(); fetchStats();
     } catch { toast.error('Failed to delete listing'); }
+  };
+  const handleReverify = async (reportId: string) => {
+    setReverifying(reportId);
+    try {
+      const res = await fetch(`/api/reports/${reportId}/reverify`, { method: 'POST', headers: getAuthHeaders() });
+      if (res.ok) {
+        const d = await res.json();
+        setReports(prev => prev.map(r => r._id === reportId ? d.report : r));
+        toast.success('Re-verification complete');
+      } else {
+        toast.error('Re-verify failed');
+      }
+    } catch { toast.error('Re-verify failed'); }
+    finally { setReverifying(null); }
   };
   const handleLogout = () => { sessionStorage.clear(); navigate('/'); };
 
@@ -164,11 +189,12 @@ export function AdminDashboard() {
 
       <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
         <Tabs value={currentTab} className="w-full" onValueChange={handleTabChange}>
-          <TabsList className="w-full grid grid-cols-4 mb-6 bg-white rounded-2xl p-1">
+          <TabsList className="w-full grid grid-cols-5 mb-6 bg-white rounded-2xl p-1">
             <TabsTrigger value="analytics" className="rounded-xl"><BarChart3 className="w-4 h-4 mr-1" /> Stats</TabsTrigger>
             <TabsTrigger value="users" className="rounded-xl"><Users className="w-4 h-4 mr-1" /> Users</TabsTrigger>
             <TabsTrigger value="listings" className="rounded-xl"><Package className="w-4 h-4 mr-1" /> Food</TabsTrigger>
             <TabsTrigger value="requests" className="rounded-xl"><ClipboardList className="w-4 h-4 mr-1" /> Requests</TabsTrigger>
+            <TabsTrigger value="reports" className="rounded-xl"><ShieldCheck className="w-4 h-4 mr-1" /> Reports</TabsTrigger>
           </TabsList>
 
           {/* Analytics Tab — Flashcard style */}
@@ -320,6 +346,139 @@ export function AdminDashboard() {
               </Card>
             ))}
             {requests.length === 0 && <div className="text-center py-8 text-gray-500">No requests yet</div>}
+          </TabsContent>
+
+          {/* Reports Tab */}
+          <TabsContent value="reports" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">{reports.length} report(s)</p>
+              <Button size="sm" variant="outline" className="rounded-full" onClick={fetchReports}>
+                <RefreshCw className="w-4 h-4 mr-1" /> Refresh
+              </Button>
+            </div>
+            {reports.map((report) => {
+              const v = report.imageVerification || {};
+              const isExpanded = expandedReport === report._id;
+              const getVColor = (verdict: string) => {
+                if (verdict === 'Verified') return 'bg-green-100 text-green-700';
+                if (verdict === 'Mismatch') return 'bg-yellow-100 text-yellow-700';
+                return 'bg-red-100 text-red-700';
+              };
+              const cColor = (c: number) => c >= 70 ? '#40916C' : c >= 40 ? '#F4A261' : '#E76F51';
+              return (
+                <Card key={report._id} className="rounded-2xl overflow-hidden shadow-sm">
+                  {/* Clickable main row */}
+                  <div
+                    className="flex items-center p-4 gap-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => setExpandedReport(isExpanded ? null : report._id)}
+                  >
+                    {/* Image thumbnail */}
+                    <div className="flex-shrink-0">
+                      {report.image ? (
+                        <img src={report.image} alt="Report" className="w-16 h-16 rounded-xl object-cover border border-gray-200" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No img</div>
+                      )}
+                    </div>
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-[#1A1A1A] text-sm">{report.title}</h3>
+                        <Badge className={`rounded-full text-xs ${report.status === 'Approved' ? 'bg-green-100 text-green-700' : report.status === 'Not Valid' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {report.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        👤 {report.reporterId?.name || 'Unknown'} ({report.reporterId?.role}) · 📁 {report.reportType?.replace('_', ' ')} · 📅 {new Date(report.createdAt).toLocaleString()}
+                      </p>
+                      {report.description && <p className="text-xs text-gray-500 mt-1 truncate">{report.description}</p>}
+                    </div>
+                    {/* Verdict + Re-verify */}
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                      <Badge className={`rounded-full text-xs ${getVColor(v.overallVerdict || 'Pending')}`}>
+                        {v.overallVerdict || 'Pending'}
+                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${v.overallConfidence || 0}%`, backgroundColor: cColor(v.overallConfidence || 0) }} />
+                        </div>
+                        <span className="text-xs font-semibold" style={{ color: cColor(v.overallConfidence || 0) }}>{v.overallConfidence || 0}%</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full text-xs h-7 px-3"
+                        disabled={reverifying === report._id}
+                        onClick={(e) => { e.stopPropagation(); handleReverify(report._id); }}
+                      >
+                        {reverifying === report._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><RefreshCw className="w-3 h-3 mr-1" /> Re-verify</>}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Expanded detail panel */}
+                  {isExpanded && v.overallVerdict && v.overallVerdict !== 'Pending' && (
+                    <div className="px-5 pb-5 pt-2 bg-gray-50 border-t border-gray-100 space-y-4">
+                      <h4 className="text-sm font-semibold text-gray-700">Verification Breakdown</h4>
+                      {/* Score bars */}
+                      <div className="space-y-2">
+                        {[
+                          { label: '🔬 ELA (Manipulation)', value: v.elaScore },
+                          { label: '🏷️ Classification', value: v.classificationConfidence },
+                          { label: '📷 Quality', value: v.qualityScore },
+                          { label: '📋 EXIF Metadata', value: v.exifScore },
+                          { label: '📊 Statistics', value: v.statsScore },
+                        ].map((item) => (
+                          <div key={item.label} className="flex items-center gap-3">
+                            <span className="text-xs text-gray-600 w-36 flex-shrink-0">{item.label}</span>
+                            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-500" style={{ width: `${item.value || 0}%`, backgroundColor: cColor(item.value || 0) }} />
+                            </div>
+                            <span className="text-xs font-semibold w-9 text-right" style={{ color: cColor(item.value || 0) }}>{item.value || 0}%</span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Tags */}
+                      <div className="flex flex-wrap gap-2">
+                        <Badge className={`rounded-full text-xs ${v.isFood ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {v.isFood ? '✅ Food Detected' : '❌ Not Food'}
+                        </Badge>
+                        <Badge className={`rounded-full text-xs ${v.contextMatch ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {v.contextMatch ? '✅ Context Match' : '❌ Context Mismatch'}
+                        </Badge>
+                        <Badge className={`rounded-full text-xs ${v.exifPresent ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {v.exifPresent ? '✅ EXIF Present' : '⚠️ No EXIF'}
+                        </Badge>
+                        {v.imageResolution && <Badge className="rounded-full text-xs bg-gray-100 text-gray-700">📐 {v.imageResolution}</Badge>}
+                      </div>
+                      {/* Labels */}
+                      {v.classificationLabels?.length > 0 && (
+                        <div>
+                          <span className="text-xs font-semibold text-gray-600">Detected Labels: </span>
+                          <span className="text-xs text-gray-500">{v.classificationLabels.join(', ')}</span>
+                        </div>
+                      )}
+                      {v.qualityIssues?.length > 0 && (
+                        <div>
+                          <span className="text-xs font-semibold text-gray-600">Quality Issues: </span>
+                          <span className="text-xs text-gray-500">{v.qualityIssues.join(', ')}</span>
+                        </div>
+                      )}
+                      {v.details && (
+                        <div className="bg-white rounded-xl p-3">
+                          <span className="text-xs font-semibold text-gray-600">AI Summary: </span>
+                          <span className="text-xs text-gray-500">{v.details}</span>
+                        </div>
+                      )}
+                      {v.analyzedAt && (
+                        <p className="text-xs text-gray-400 italic">Analyzed: {new Date(v.analyzedAt).toLocaleString()}</p>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+            {reports.length === 0 && <div className="text-center py-8 text-gray-500">No reports submitted yet</div>}
           </TabsContent>
         </Tabs>
       </div>

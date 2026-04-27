@@ -11,6 +11,7 @@ import { Label } from '../../components/ui/label';
 import { toast } from 'sonner';
 import { useListings } from '../../context/ListingsContext';
 import { getAuthHeaders } from '../../context/AuthContext';
+import { LocationMap } from '../../components/LocationMap';
 
 export function ReceiverListingDetail() {
   const navigate = useNavigate();
@@ -143,9 +144,13 @@ export function ReceiverListingDetail() {
         <Card className="rounded-2xl p-6">
           <h3 className="font-display text-lg font-bold mb-4">Pickup Location</h3>
           <div className="space-y-4">
-            <div className="h-48 bg-gray-200 rounded-xl flex items-center justify-center">
-              <MapPin className="w-8 h-8 text-gray-400" />
-              <span className="ml-2 text-gray-500">Map View - {listing.distance} away</span>
+            <div className="rounded-xl overflow-hidden border border-gray-200">
+              <LocationMap
+                location={listing.location}
+                editable={false}
+                height="220px"
+                zoom={15}
+              />
             </div>
             <div className="flex gap-3">
               <MapPin className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" />
@@ -161,7 +166,17 @@ export function ReceiverListingDetail() {
             <Button 
               variant="outline"
               className="w-full rounded-xl border-2 border-[#2D6A4F] text-[#2D6A4F] hover:bg-[#2D6A4F] hover:text-white"
+              onClick={() => {
+                const lat = listing.location?.lat;
+                const lng = listing.location?.lng;
+                if (lat && lng) {
+                  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+                } else {
+                  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.address)}`, '_blank');
+                }
+              }}
             >
+              <MapPin className="w-4 h-4 mr-2" />
               Get Directions
             </Button>
           </div>

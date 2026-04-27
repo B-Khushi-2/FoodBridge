@@ -1,16 +1,12 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, MapPin, Clock, Salad, Package, Users } from 'lucide-react';
+import { Bell, MapPin, Clock, Salad, Package, Users, ShieldCheck } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { BottomNav } from '../../components/BottomNav';
 import { useListings } from '../../context/ListingsContext';
-
-const stats = [
-  { icon: Package, value: '28', label: 'Pickups Received', color: 'bg-[#F4A261]' },
-  { icon: Users, value: '~140', label: 'People Served', color: 'bg-[#2D6A4F]' },
-  { icon: Salad, value: '12', label: 'Cattle Feeds Collected', color: 'bg-[#E76F51]' },
-];
+import { getAuthHeaders } from '../../context/AuthContext';
 
 const quickFilters = [
   { label: 'Near Me', icon: MapPin },
@@ -23,6 +19,49 @@ export function ReceiverDashboard() {
   const navigate = useNavigate();
   const userName = sessionStorage.getItem('userName') || 'User';
   const { availableListings } = useListings();
+  const [myRequests, setMyRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        const res = await fetch('/api/requests/receiver', { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          setMyRequests(data.requests);
+        }
+      } catch (err) {
+        console.error('Failed to fetch receiver requests:', err);
+      }
+    };
+    fetchRequests();
+  }, []);
+
+  // Fetch unread notification count
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch('/api/notifications/unread-count', { headers: getAuthHeaders() });
+        if (res.ok) { const d = await res.json(); setUnreadCount(d.count); }
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate real stats from API data
+  const completedRequests = myRequests.filter(r => r.status === 'completed');
+  const acceptedRequests = myRequests.filter(r => r.status === 'accepted');
+  const pickupsReceived = completedRequests.length + acceptedRequests.length;
+  const estimatedPeopleServed = Math.round(pickupsReceived * 5); // ~5 people per pickup
+  const totalAvailable = availableListings.length;
+
+  const stats = [
+    { icon: Package, value: pickupsReceived.toString(), label: 'Pickups Received', color: 'bg-[#F4A261]' },
+    { icon: Users, value: estimatedPeopleServed > 0 ? `~${estimatedPeopleServed}` : '0', label: 'People Served', color: 'bg-[#2D6A4F]' },
+    { icon: Salad, value: totalAvailable.toString(), label: 'Available Now', color: 'bg-[#E76F51]' },
+  ];
 
   // Show only up to 3 for the dashboard preview
   const previewListings = availableListings.slice(0, 3);
@@ -42,9 +81,11 @@ export function ReceiverDashboard() {
             className="relative text-gray-600 hover:text-gray-900"
           >
             <Bell className="w-6 h-6" />
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#F4A261] text-white text-xs rounded-full flex items-center justify-center">
-              5
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#F4A261] text-white text-xs rounded-full flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -159,6 +200,15 @@ export function ReceiverDashboard() {
         >
           <MapPin className="w-5 h-5 mr-2" />
           View on Map
+        </Button>
+
+        {/* Report Button */}
+        <Button 
+          onClick={() => navigate('/report')}
+          className="w-full bg-white border-2 border-[#E76F51] text-[#E76F51] hover:bg-[#E76F51] hover:text-white rounded-2xl py-6 shadow-sm"
+        >
+          <ShieldCheck className="w-5 h-5 mr-2" />
+          Report & Verify Image
         </Button>
       </div>
 

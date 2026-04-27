@@ -63,7 +63,7 @@ export function RoleSelection() {
 
         {/* Login link */}
         <div className="text-center pt-4">
-          <button 
+          <button
             onClick={() => navigate('/login')}
             className="text-[#6B7280] text-sm hover:text-[#2D6A4F] transition-colors"
           >
