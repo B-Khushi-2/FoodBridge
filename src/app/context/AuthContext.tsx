@@ -18,7 +18,9 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User>;
   registerDonor: (data: { fullName: string; orgName: string; phone: string; city: string; password: string; email: string }) => Promise<User>;
   registerReceiver: (data: { orgName: string; orgType: string; phone: string; city: string; password: string; email: string }) => Promise<User>;
+  googleLogin: (credential: string) => Promise<User>;
   logout: () => void;
+
   setError: (error: string) => void;
 }
 
@@ -129,16 +131,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const googleLogin = async (credential: string): Promise<User> => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Google login failed');
+      setUser(data.user);
+      return data.user;
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
+
     setUser(null);
     sessionStorage.clear();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, registerDonor, registerReceiver, logout, setError }}>
+    <AuthContext.Provider value={{ user, loading, error, login, registerDonor, registerReceiver, googleLogin, logout, setError }}>
       {children}
     </AuthContext.Provider>
   );
+
 }
 
 export function useAuth() {

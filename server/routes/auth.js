@@ -3,6 +3,9 @@ const router = express.Router();
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
 const { sendWelcomeEmail } = require('../services/emailService');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 
 // Register
@@ -47,5 +50,40 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Google Login
+router.post('/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Create new user if not exists
+      // Default to 'receiver' if not specified
+      user = new User({
+        name,
+        email,
+        password: googleId, // Dummy password for oauth users
+        role: 'receiver', // Default role
+        phone: '0000000000',
+        address: 'N/A'
+      });
+      await user.save();
+      sendWelcomeEmail(user).catch(() => {});
+    }
+
+    res.json({ user: { _id: user._id, name: user.name, email: user.email, role: user.role, phone: user.phone, address: user.address } });
+  } catch (err) {
+    console.error('Google Auth Error:', err);
+    res.status(500).json({ error: 'Google authentication failed' });
+  }
+});
+
 
 module.exports = router;
