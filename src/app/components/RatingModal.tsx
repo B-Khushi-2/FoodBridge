@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Star, X, Send } from 'lucide-react';
 import { Button } from './ui/button';
-import { getAuthHeaders } from '../../context/AuthContext';
+import { useAuth, getAuthHeaders } from '../context/AuthContext';
 import { toast } from 'sonner';
 
 interface RatingModalProps {
