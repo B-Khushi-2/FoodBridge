@@ -46,8 +46,11 @@ self.addEventListener('fetch', (event) => {
     caches.match(event.request).then((cached) =>
       cached || fetch(event.request).then((response) => {
         if (response && response.status === 200 && response.type === 'basic') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          const url = new URL(event.request.url);
+          if (url.protocol.startsWith('http')) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
         }
         return response;
       }).catch(() => {

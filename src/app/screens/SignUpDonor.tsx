@@ -196,7 +196,7 @@ export function SignUpDonor() {
               onSuccess={async (credentialResponse) => {
                 if (credentialResponse.credential) {
                   try {
-                    await googleLogin(credentialResponse.credential);
+                    await googleLogin(credentialResponse.credential, 'donor');
                     navigate('/donor/dashboard');
                   } catch (err) {
                     console.error('Google Sign Up failed:', err);

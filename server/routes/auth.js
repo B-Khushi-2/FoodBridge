@@ -54,7 +54,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 // Google Login
 router.post('/google', async (req, res) => {
   try {
-    const { credential } = req.body;
+    const { credential, role } = req.body;
     const ticket = await client.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID
@@ -65,12 +65,11 @@ router.post('/google', async (req, res) => {
     let user = await User.findOne({ email });
     if (!user) {
       // Create new user if not exists
-      // Default to 'receiver' if not specified
       user = new User({
         name,
         email,
         password: googleId, // Dummy password for oauth users
-        role: 'receiver', // Default role
+        role: role || 'receiver', // Use chosen signup role
         phone: '0000000000',
         address: 'N/A'
       });

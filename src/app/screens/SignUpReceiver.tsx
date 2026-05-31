@@ -217,7 +217,7 @@ export function SignUpReceiver() {
               onSuccess={async (credentialResponse) => {
                 if (credentialResponse.credential) {
                   try {
-                    await googleLogin(credentialResponse.credential);
+                    await googleLogin(credentialResponse.credential, 'receiver');
                     navigate('/receiver/dashboard');
                   } catch (err) {
                     console.error('Google Sign Up failed:', err);
