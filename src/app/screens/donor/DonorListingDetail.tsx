@@ -79,7 +79,7 @@ export function DonorListingDetail() {
         )}
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         {/* Title & Status */}
         <div>
           <div className="flex items-start justify-between mb-2">

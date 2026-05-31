@@ -61,7 +61,7 @@ export function ImpactReport() {
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#2D6A4F] to-[#40916C] text-white">
-        <div className="max-w-4xl mx-auto px-6 py-6">
+        <div className="max-w-5xl mx-auto px-6 py-6">
           <button onClick={() => navigate(-1)} className="text-white/80 hover:text-white mb-4">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -70,7 +70,7 @@ export function ImpactReport() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 -mt-6 pb-8 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 -mt-6 pb-8 space-y-6">
         {/* Main Stats */}
         {userRole === 'donor' ? (
           <div className="grid grid-cols-2 gap-4">

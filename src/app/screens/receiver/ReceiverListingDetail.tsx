@@ -68,7 +68,7 @@ export function ReceiverListingDetail() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         {/* Title */}
         <div>
           <h1 className="font-display text-3xl font-bold text-[#1A1A1A] mb-2">{listing.name}</h1>

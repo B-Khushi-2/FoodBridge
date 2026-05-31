@@ -6,8 +6,7 @@ const requestSchema = new mongoose.Schema({
   donorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   status: { type: String, enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled'], default: 'pending' },
   message: { type: String, default: '' },
-  qrCode: { type: String, default: '' },       // base64 QR image for pickup
-  qrToken: { type: String, default: '' },      // secret token embedded in QR
+  pickupPin: { type: String, default: '' },    // 4-digit PIN for pickup verification
   pickedUpAt: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });

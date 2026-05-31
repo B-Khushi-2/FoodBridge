@@ -69,7 +69,7 @@ export function BrowseListings() {
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+        <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-4">
               <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
@@ -149,7 +149,7 @@ export function BrowseListings() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-4">
+      <div className="max-w-5xl mx-auto px-6 py-4">
         {/* View Toggle */}
         <div className="flex gap-2 mb-4">
           <Button

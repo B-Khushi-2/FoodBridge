@@ -93,7 +93,7 @@ const sendRequestAcceptedEmail = (receiver, foodName, donorName, location) => se
     <h2 style="color:#1A1A1A;">Request Accepted! 🎊</h2>
     <p style="color:#555;">Great news! <strong>${donorName}</strong> accepted your request for <strong>"${foodName}"</strong>.</p>
     <p style="color:#555;">📍 Pickup location: <strong>${location}</strong></p>
-    <p style="color:#555;">Check your app for the QR code to verify your pickup.</p>
+    <p style="color:#555;">Check your app for your 4-digit pickup PIN to show the donor at pickup.</p>
     ${btn('View My Requests', 'http://localhost:5173/receiver/my-requests')}
   `)
 });

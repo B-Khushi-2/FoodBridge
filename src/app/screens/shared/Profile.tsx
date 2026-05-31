@@ -50,7 +50,7 @@ export function Profile() {
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -58,7 +58,7 @@ export function Profile() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         {/* Profile Header */}
         <Card className="rounded-2xl p-6 bg-gradient-to-br from-[#2D6A4F] to-[#40916C] text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>

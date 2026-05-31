@@ -73,7 +73,7 @@ export function ReceiverDashboard() {
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
             <h1 className="font-display text-xl font-bold text-[#1A1A1A]">
               {t('common.welcome')}, {userName}
@@ -96,7 +96,7 @@ export function ReceiverDashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         {/* Urgency Banner */}
         <Card className="rounded-2xl p-4 bg-gradient-to-r from-[#F4A261] to-[#E76F51] text-white shadow-lg">
           <div className="flex items-center gap-3 mb-2">

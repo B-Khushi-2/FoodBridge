@@ -14,7 +14,10 @@ router.get('/user', authMiddleware, async (req, res) => {
 
     if (role === 'donor') {
       const myListings = await FoodListing.find({ donorId: userId });
-      const totalFood = myListings.reduce((sum, l) => sum + parseFloat(l.quantity || 0), 0);
+      const totalFood = myListings.reduce((sum, l) => {
+        const val = parseFloat(l.quantity || 0);
+        return sum + (isNaN(val) ? 0 : val);
+      }, 0);
       const completedPickups = myListings.filter(l => l.status === 'completed').length;
       const mealsEnabled = Math.round(totalFood * 2.5);
       const co2Saved = Math.round(totalFood * 1.5);

@@ -32,7 +32,7 @@ export function Chat() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const { user: currentUser } = useAuth();
 
-  // Load history
+  // Load history & other user's name
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -45,8 +45,30 @@ export function Chat() {
         console.error('Failed to fetch chat history', err);
       }
     };
+
+    const fetchOtherName = async () => {
+      if (!currentUser) return;
+      try {
+        const endpoint = currentUser.role === 'donor' ? '/api/requests/donor' : '/api/requests/receiver';
+        const res = await fetch(endpoint, { headers: getAuthHeaders() });
+        if (res.ok) {
+          const data = await res.json();
+          const reqItem = data.requests?.find((r: any) => r._id === requestId);
+          if (reqItem) {
+            const otherUser = currentUser.role === 'donor' ? reqItem.receiverId : reqItem.donorId;
+            if (otherUser?.name) {
+              setOtherName(otherUser.name);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch other name', err);
+      }
+    };
+
     fetchHistory();
-  }, [roomId]);
+    fetchOtherName();
+  }, [roomId, requestId, currentUser]);
 
   // Socket.io connection
   useEffect(() => {
@@ -106,7 +128,7 @@ export function Chat() {
     <div className="min-h-screen bg-[#FAFAF7] flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+        <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
@@ -143,7 +165,7 @@ export function Chat() {
 
       {/* Room info */}
       <div className="bg-amber-50 border-b border-amber-100">
-        <div className="max-w-4xl mx-auto px-6 py-2">
+        <div className="max-w-5xl mx-auto px-6 py-2">
           <p className="text-xs text-amber-700 text-center">
             💬 Messages are saved and synced in real-time for this listing
           </p>
@@ -152,7 +174,7 @@ export function Chat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6 space-y-4">
+        <div className="max-w-5xl mx-auto px-6 py-6 space-y-4">
           {messages.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <p className="text-sm">No messages yet. Say hello! 👋</p>
@@ -190,7 +212,7 @@ export function Chat() {
 
       {/* Quick Replies */}
       <div className="bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-6 py-2">
+        <div className="max-w-5xl mx-auto px-6 py-2">
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {quickReplies.map((reply, index) => (
               <button
@@ -207,7 +229,7 @@ export function Chat() {
 
       {/* Message Input */}
       <div className="bg-white border-t border-gray-200">
-        <div className="max-w-4xl mx-auto px-6 py-4">
+        <div className="max-w-5xl mx-auto px-6 py-4">
           <div className="flex gap-2">
             <Input
               value={message}

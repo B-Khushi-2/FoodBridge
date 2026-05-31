@@ -13,7 +13,6 @@ import { ReceiverDashboard } from "./screens/receiver/ReceiverDashboard";
 import { BrowseListings } from "./screens/receiver/BrowseListings";
 import { ReceiverListingDetail } from "./screens/receiver/ReceiverListingDetail";
 import { MyRequests } from "./screens/receiver/MyRequests";
-import { QRScanner } from "./screens/receiver/QRScanner";
 import { Notifications } from "./screens/shared/Notifications";
 import { Profile } from "./screens/shared/Profile";
 import { ImpactReport } from "./screens/shared/ImpactReport";
@@ -84,10 +83,6 @@ export const router = createBrowserRouter([
   {
     path: "/receiver/my-requests",
     Component: MyRequests,
-  },
-  {
-    path: "/receiver/qr-scanner",
-    Component: QRScanner,
   },
   // ── Shared ───────────────────────────────────
   {

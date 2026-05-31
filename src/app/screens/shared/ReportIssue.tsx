@@ -116,7 +116,7 @@ export function ReportIssue() {
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -124,7 +124,7 @@ export function ReportIssue() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         {/* Info Banner */}
         <Card className="rounded-2xl p-4 bg-gradient-to-r from-[#2D6A4F] to-[#40916C] text-white shadow-lg">
           <div className="flex items-center gap-3">

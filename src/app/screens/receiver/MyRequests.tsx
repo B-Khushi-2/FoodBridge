@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, MapPin, Clock, Star, Phone, CheckCircle, XCircle, AlertCircle, QrCode, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Star, Phone, CheckCircle, XCircle, AlertCircle, KeyRound, MessageCircle, ShieldCheck, Copy } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -52,6 +52,14 @@ export function MyRequests() {
     } catch (err) {
       toast.error('Failed to cancel request');
     }
+  };
+
+  const handleCopyPin = (pin: string) => {
+    navigator.clipboard.writeText(pin).then(() => {
+      toast.success('PIN copied!');
+    }).catch(() => {
+      toast.error('Failed to copy PIN');
+    });
   };
 
   const getStatusConfig = (status: string) => {
@@ -118,7 +126,7 @@ export function MyRequests() {
           </div>
         )}
 
-        {/* Accepted — show pickup details + QR code */}
+        {/* Accepted — show pickup details + PIN */}
         {request.status === 'accepted' && (
           <div className="bg-green-50 border-t border-green-100 px-4 py-3 space-y-3">
             <p className="text-sm text-green-700 font-semibold">🎉 Donor accepted your request! Go pick it up:</p>
@@ -136,20 +144,35 @@ export function MyRequests() {
                 <span className="text-green-700">{donor.phone}</span>
               </div>
             )}
-            {/* QR Code for pickup verification */}
-            {request.qrCode && (
-              <div className="mt-3 p-3 bg-white rounded-xl border border-green-200 text-center">
-                <p className="text-xs text-green-700 font-semibold mb-2">📲 Your Pickup QR Code</p>
-                <img src={request.qrCode} alt="Pickup QR" className="w-36 h-36 mx-auto rounded-lg" />
-                <p className="text-xs text-gray-500 mt-2">Show this to the donor or scan at pickup</p>
+
+            {/* Pickup PIN Display */}
+            {request.pickupPin && (
+              <div className="mt-3 p-4 bg-white rounded-xl border-2 border-green-300 text-center space-y-2">
+                <div className="flex items-center justify-center gap-2 text-sm font-semibold text-[#2D6A4F]">
+                  <ShieldCheck className="w-5 h-5" />
+                  Your Pickup PIN
+                </div>
+                <div className="flex items-center justify-center gap-3 my-2">
+                  {request.pickupPin.split('').map((digit: string, i: number) => (
+                    <div
+                      key={i}
+                      className="w-12 h-14 flex items-center justify-center bg-[#EAF4EF] rounded-xl border-2 border-[#2D6A4F]/30 text-2xl font-bold text-[#2D6A4F]"
+                    >
+                      {digit}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">Show this PIN to the donor when you arrive for pickup</p>
                 <button
-                  onClick={() => navigate('/receiver/qr-scanner')}
-                  className="mt-2 text-xs text-[#2D6A4F] underline font-medium"
+                  onClick={() => handleCopyPin(request.pickupPin)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-xs text-gray-600 font-medium transition-colors"
                 >
-                  Or verify pickup manually →
+                  <Copy className="w-3 h-3" />
+                  Copy PIN
                 </button>
               </div>
             )}
+
             {/* Chat button */}
             <button
               onClick={() => navigate(`/chat/${listing._id}/${request._id}`)}
@@ -203,25 +226,18 @@ export function MyRequests() {
   return (
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-6 h-6" />
           </button>
           <h1 className="font-display text-xl font-bold">My Requests</h1>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto">
             <span className="text-sm text-gray-500">{requests.length} total</span>
-            <button
-              onClick={() => navigate('/receiver/qr-scanner')}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#EAF4EF] hover:bg-[#d1eadb] text-[#2D6A4F] rounded-full text-xs font-medium transition-colors"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              Scan QR
-            </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6">
+      <div className="max-w-5xl mx-auto px-6 py-6">
         <Tabs defaultValue="all" className="w-full">
           <TabsList className="w-full grid grid-cols-4 mb-6 bg-white rounded-2xl p-1">
             <TabsTrigger value="all" className="rounded-xl">All</TabsTrigger>

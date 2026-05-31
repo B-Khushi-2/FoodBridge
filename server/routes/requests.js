@@ -5,8 +5,6 @@ const FoodListing = require('../models/FoodListing');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const { authMiddleware } = require('../middleware/auth');
-const QRCode = require('qrcode');
-const crypto = require('crypto');
 const { sendPickupRequestEmail, sendRequestAcceptedEmail, sendPickupCompletedEmail } = require('../services/emailService');
 
 
@@ -83,16 +81,26 @@ router.get('/donor', authMiddleware, async (req, res) => {
   }
 });
 
-// Verify QR token (receiver scans QR → complete pickup)
-router.post('/verify-qr', authMiddleware, async (req, res) => {
+// Verify Pickup PIN — donor enters the 4-digit PIN shown to receiver
+router.post('/verify-pin', authMiddleware, async (req, res) => {
   try {
-    const { qrToken } = req.body;
-    const request = await Request.findOne({ qrToken, status: 'accepted' });
-    if (!request) {
-      return res.status(404).json({ error: 'Invalid or already used QR code' });
+    const { requestId, pin } = req.body;
+    if (!requestId || !pin) {
+      return res.status(400).json({ error: 'Request ID and PIN are required' });
     }
-    if (request.receiverId.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: 'QR code does not belong to you' });
+
+    const request = await Request.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+    if (request.donorId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Only the donor can verify this pickup' });
+    }
+    if (request.status !== 'accepted') {
+      return res.status(400).json({ error: 'Request is not in accepted state' });
+    }
+    if (request.pickupPin !== pin.trim()) {
+      return res.status(400).json({ error: 'Incorrect PIN. Please ask the receiver to check their PIN.' });
     }
 
     const listing = await FoodListing.findById(request.listingId);
@@ -108,7 +116,7 @@ router.post('/verify-qr', authMiddleware, async (req, res) => {
       userId: request.receiverId,
       type: 'request_completed',
       title: 'Pickup Verified! 🌍',
-      message: `QR verified! You successfully received "${foodName}". Thank you for reducing food waste!`,
+      message: `PIN verified! You successfully received "${foodName}". Thank you for reducing food waste!`,
       relatedId: request._id,
       relatedModel: 'Request'
     });
@@ -116,13 +124,20 @@ router.post('/verify-qr', authMiddleware, async (req, res) => {
       userId: request.donorId,
       type: 'request_completed',
       title: 'Donation Picked Up! 🎉',
-      message: `"${foodName}" was picked up and QR verified. Thank you for your generosity!`,
+      message: `"${foodName}" pickup confirmed with PIN. Thank you for your generosity!`,
       relatedId: request._id,
       relatedModel: 'Request'
     });
 
-    res.json({ success: true, request });
+    // Email both parties
+    const receiverUser = await User.findById(request.receiverId);
+    const donorUser = await User.findById(request.donorId);
+    if (receiverUser) sendPickupCompletedEmail(receiverUser, foodName, 'receiver').catch(() => {});
+    if (donorUser) sendPickupCompletedEmail(donorUser, foodName, 'donor').catch(() => {});
+
+    res.json({ success: true, message: `Pickup of "${foodName}" confirmed!`, request });
   } catch (err) {
+    console.error('[Requests] PIN verify error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -155,21 +170,9 @@ router.put('/:id', authMiddleware, async (req, res) => {
     const foodName = listing?.foodType || 'food';
 
     if (status === 'accepted') {
-      // Generate QR code for pickup verification
-      const qrToken = crypto.randomBytes(20).toString('hex');
-      const qrPayload = JSON.stringify({
-        token: qrToken,
-        requestId: request._id.toString(),
-        food: foodName
-      });
-      const qrDataUrl = await QRCode.toDataURL(qrPayload, {
-        width: 300,
-        margin: 2,
-        color: { dark: '#2D6A4F', light: '#FFFFFF' }
-      });
-
-      request.qrToken = qrToken;
-      request.qrCode = qrDataUrl;
+      // Generate 4-digit PIN for pickup verification
+      const pickupPin = String(Math.floor(1000 + Math.random() * 9000)); // 1000-9999
+      request.pickupPin = pickupPin;
 
       await FoodListing.findByIdAndUpdate(request.listingId, { status: 'claimed' });
       await Request.updateMany(
@@ -180,7 +183,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         userId: request.receiverId,
         type: 'request_accepted',
         title: 'Request Accepted! 🎉',
-        message: `Your pickup request for "${foodName}" has been accepted. Check your QR code for pickup!`,
+        message: `Your pickup request for "${foodName}" has been accepted! Your pickup PIN is: ${pickupPin}. Show it to the donor at pickup.`,
         relatedId: request._id,
         relatedModel: 'Request'
       });
@@ -204,7 +207,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       });
     }
 
-    // Manual completion (fallback if QR not used)
+    // Manual completion (fallback if PIN not used)
     if (status === 'completed') {
       await FoodListing.findByIdAndUpdate(request.listingId, { status: 'completed' });
       request.pickedUpAt = new Date();

@@ -84,7 +84,7 @@ export function MyListings() {
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -95,7 +95,7 @@ export function MyListings() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6">
+      <div className="max-w-5xl mx-auto px-6 py-6">
         {myListings.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

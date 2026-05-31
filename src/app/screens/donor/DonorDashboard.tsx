@@ -34,7 +34,10 @@ export function DonorDashboard() {
   const expiredListings = myDonorListings.filter(l => l.status === 'Expired');
 
   // Calculate stats from real data
-  const totalFoodDonated = myDonorListings.reduce((sum, l) => sum + parseFloat(l.quantity || '0'), 0);
+  const totalFoodDonated = myDonorListings.reduce((sum, l) => {
+    const val = parseFloat(l.quantity || '0');
+    return sum + (isNaN(val) ? 0 : val);
+  }, 0);
   const completedPickups = myDonorListings.filter(l => l.status === 'Completed').length;
   const estimatedMeals = Math.round(totalFoodDonated * 2.5); // Rough estimate
 
@@ -55,7 +58,7 @@ export function DonorDashboard() {
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="font-display text-xl font-bold text-[#1A1A1A]">
               {t('common.goodMorning')}, {userName} 👋
@@ -78,11 +81,11 @@ export function DonorDashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         {/* Stats Row */}
         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
           {stats.map((stat, index) => (
-            <Card key={index} className={`${stat.color} text-white p-4 min-w-[140px] rounded-2xl flex-shrink-0 shadow-lg`}>
+            <Card key={index} className={`${stat.color} text-white p-4 flex-1 rounded-2xl shadow-lg`}>
               <stat.icon className="w-6 h-6 mb-2 opacity-90" />
               <div className="font-mono text-2xl font-bold">{stat.value}</div>
               {stat.unit && <div className="text-xs opacity-80">{stat.unit}</div>}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, Phone, Star, CheckCircle, XCircle, Clock, Package, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Phone, Star, CheckCircle, XCircle, Clock, Package, MessageCircle, ShieldCheck, KeyRound } from 'lucide-react';
 import { Card } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -11,6 +11,9 @@ import { toast } from 'sonner';
 export function PickupRequests() {
   const navigate = useNavigate();
   const [requests, setRequests] = useState<any[]>([]);
+  const [pinInputs, setPinInputs] = useState<Record<string, string[]>>({});
+  const [verifying, setVerifying] = useState<string | null>(null);
+  const pinRefs = useRef<Record<string, (HTMLInputElement | null)[]>>({});
 
   const fetchRequests = async () => {
     try {
@@ -39,7 +42,7 @@ export function PickupRequests() {
       });
       if (!res.ok) throw new Error('Failed to update request');
       
-      if (status === 'accepted') toast.success('✅ Request accepted! Receiver has been notified.');
+      if (status === 'accepted') toast.success('✅ Request accepted! Receiver has been notified with a pickup PIN.');
       else if (status === 'rejected') toast.info('Request declined.');
       else if (status === 'completed') toast.success('🎉 Marked as completed! Food has been picked up.');
       
@@ -50,13 +53,85 @@ export function PickupRequests() {
     }
   };
 
+  const handlePinDigit = (requestId: string, index: number, value: string) => {
+    if (value.length > 1) value = value.slice(-1);
+    if (value && !/^\d$/.test(value)) return;
+
+    const current = pinInputs[requestId] || ['', '', '', ''];
+    const updated = [...current];
+    updated[index] = value;
+    setPinInputs({ ...pinInputs, [requestId]: updated });
+
+    // Auto-focus next input
+    if (value && index < 3) {
+      const nextInput = pinRefs.current[requestId]?.[index + 1];
+      nextInput?.focus();
+    }
+  };
+
+  const handlePinKeyDown = (requestId: string, index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace') {
+      const current = pinInputs[requestId] || ['', '', '', ''];
+      if (!current[index] && index > 0) {
+        const prevInput = pinRefs.current[requestId]?.[index - 1];
+        prevInput?.focus();
+      }
+    }
+  };
+
+  const handlePinPaste = (requestId: string, e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (pasted.length === 4) {
+      const digits = pasted.split('');
+      setPinInputs({ ...pinInputs, [requestId]: digits });
+      // Focus last input
+      const lastInput = pinRefs.current[requestId]?.[3];
+      lastInput?.focus();
+    }
+  };
+
+  const handleVerifyPin = async (requestId: string) => {
+    const digits = pinInputs[requestId] || [];
+    const pin = digits.join('');
+    if (pin.length !== 4) {
+      toast.error('Please enter the complete 4-digit PIN');
+      return;
+    }
+
+    setVerifying(requestId);
+    try {
+      const res = await fetch('/api/requests/verify-pin', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ requestId, pin })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        toast.success('🎉 ' + (data.message || 'Pickup confirmed!'));
+        setPinInputs({ ...pinInputs, [requestId]: ['', '', '', ''] });
+        fetchRequests();
+      } else {
+        toast.error(data.error || 'Verification failed');
+        // Clear and refocus first digit
+        setPinInputs({ ...pinInputs, [requestId]: ['', '', '', ''] });
+        pinRefs.current[requestId]?.[0]?.focus();
+      }
+    } catch (err) {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setVerifying(null);
+    }
+  };
+
   const pendingCount = requests.filter(r => r.status === 'pending').length;
   const acceptedCount = requests.filter(r => r.status === 'accepted').length;
 
   return (
     <div className="min-h-screen bg-[#FAFAF7] pb-24">
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -67,7 +142,7 @@ export function PickupRequests() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-4">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-4">
         {requests.length === 0 ? (
           <div className="text-center py-16">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -78,6 +153,13 @@ export function PickupRequests() {
           requests.map((request) => {
             const receiver = request.receiverId || {};
             const listing = request.listingId || {};
+            const currentPin = pinInputs[request._id] || ['', '', '', ''];
+
+            // Ensure refs array exists
+            if (!pinRefs.current[request._id]) {
+              pinRefs.current[request._id] = [null, null, null, null];
+            }
+
             return (
               <Card key={request._id} className="rounded-2xl overflow-hidden shadow-sm">
                 {/* Header with receiver info */}
@@ -148,20 +230,73 @@ export function PickupRequests() {
                 )}
 
                 {request.status === 'accepted' && (
-                  <div className="border-t border-green-100 bg-green-50 px-5 py-3 space-y-2">
+                  <div className="border-t border-green-100 bg-green-50 px-5 py-4 space-y-4">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-green-700 font-medium">
                         <CheckCircle className="w-4 h-4 inline mr-1" />
                         Accepted — Waiting for pickup
                       </span>
-                      <Button 
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs"
-                        onClick={() => handleAction(request._id, 'completed')}
+                    </div>
+
+                    {/* PIN Verification Section */}
+                    <div className="bg-white rounded-xl border border-green-200 p-4 space-y-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-[#2D6A4F]">
+                        <KeyRound className="w-4 h-4" />
+                        Verify Pickup with PIN
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Ask the receiver for their 4-digit pickup PIN and enter it below to confirm handover.
+                      </p>
+
+                      {/* 4-digit PIN input boxes */}
+                      <div className="flex items-center justify-center gap-3">
+                        {[0, 1, 2, 3].map((i) => (
+                          <input
+                            key={i}
+                            ref={(el) => {
+                              if (!pinRefs.current[request._id]) pinRefs.current[request._id] = [null, null, null, null];
+                              pinRefs.current[request._id][i] = el;
+                            }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={currentPin[i]}
+                            onChange={(e) => handlePinDigit(request._id, i, e.target.value)}
+                            onKeyDown={(e) => handlePinKeyDown(request._id, i, e)}
+                            onPaste={(e) => handlePinPaste(request._id, e)}
+                            className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-200 rounded-xl focus:border-[#2D6A4F] focus:ring-2 focus:ring-[#2D6A4F]/20 outline-none transition-all bg-gray-50 focus:bg-white"
+                            disabled={verifying === request._id}
+                          />
+                        ))}
+                      </div>
+
+                      <Button
+                        onClick={() => handleVerifyPin(request._id)}
+                        disabled={currentPin.join('').length !== 4 || verifying === request._id}
+                        className="w-full bg-[#2D6A4F] hover:bg-[#235a41] text-white rounded-xl py-2.5 font-semibold text-sm"
                       >
-                        ✅ Mark Picked Up
+                        {verifying === request._id ? (
+                          <span className="flex items-center gap-2">
+                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Verifying...
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4" />
+                            Confirm Pickup
+                          </span>
+                        )}
                       </Button>
                     </div>
+
+                    {/* Fallback manual completion */}
+                    <button
+                      className="text-xs text-gray-400 hover:text-gray-600 underline w-full text-center transition-colors"
+                      onClick={() => handleAction(request._id, 'completed')}
+                    >
+                      Or mark as picked up without PIN
+                    </button>
+
                     {receiver.phone && receiver.phone !== '0000000000' && (
                       <div className="flex items-center gap-2 text-sm text-green-700">
                         <Phone className="w-4 h-4" />

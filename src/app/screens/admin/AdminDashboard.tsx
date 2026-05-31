@@ -198,7 +198,7 @@ export function AdminDashboard() {
 
       {/* Header */}
       <div className="bg-[#2D6A4F] text-white sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/')} className="text-white/80 hover:text-white">
               <ArrowLeft className="w-6 h-6" />
@@ -214,7 +214,7 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
         <Tabs value={currentTab} className="w-full" onValueChange={handleTabChange}>
           <TabsList className="w-full grid grid-cols-5 mb-6 bg-white rounded-2xl p-1">
             <TabsTrigger value="analytics" className="rounded-xl"><BarChart3 className="w-4 h-4 mr-1" /> Stats</TabsTrigger>
