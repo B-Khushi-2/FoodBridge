@@ -72,7 +72,7 @@ export function Chat() {
 
   // Socket.io connection
   useEffect(() => {
-    const socket = io('http://localhost:5000', { transports: ['websocket'] });
+    const socket = io(window.location.origin, { transports: ['websocket'] });
     socketRef.current = socket;
 
     socket.on('connect', () => {

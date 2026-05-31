@@ -52,6 +52,15 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', timestamp: new Date().toISOString() });
 });
 
+// Serve static assets (Vite React production build)
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Fallback all non-API routes to index.html
+app.get(/^(?!\/api).*$/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 // ─── Socket.io Real-time Chat ──────────────────────────────────────────────
 const ChatMessage = require('./models/ChatMessage');
 
